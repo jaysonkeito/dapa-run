@@ -167,8 +167,7 @@ export default function PreviousEventsPage() {
                       <p className="text-gray-400 text-sm mb-4 line-clamp-2">{event.description}</p>
                       <Button
                         onClick={() => handleViewResults(event.id)}
-                        variant="outline"
-                        className="w-full border-orange-500 text-orange-500 hover:bg-orange-50 font-semibold"
+                        className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold shadow-md"
                       >
                         <Trophy className="w-4 h-4 mr-2" />
                         View Race Results

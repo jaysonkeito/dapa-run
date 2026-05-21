@@ -78,7 +78,7 @@ export default function AdminDashboardLayout({
       <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 bg-gray-900">
         <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-800">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center overflow-hidden">
-            <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-full h-full object-contain p-1" />
+            <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-[85%] h-[85%] object-contain" />
           </div>
           <div>
             <h1 className="text-white font-bold text-lg">DAPA RUN</h1>
@@ -108,7 +108,7 @@ export default function AdminDashboardLayout({
         </nav>
         <div className="px-3 py-4 border-t border-gray-800">
           <button
-            onClick={() => { signOut(); router.push('/admin/login') }}
+            onClick={() => { signOut({ redirect: false }).then(() => { window.location.href = '/admin/login' }) }}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-red-400 transition-all"
           >
             <LogOut className="w-5 h-5" />
@@ -125,7 +125,7 @@ export default function AdminDashboardLayout({
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-800">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center overflow-hidden">
-                  <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-full h-full object-contain p-1" />
+                  <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-[85%] h-[85%] object-contain" />
                 </div>
                 <div>
                   <h1 className="text-white font-bold text-lg">DAPA RUN</h1>

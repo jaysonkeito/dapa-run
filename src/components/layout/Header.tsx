@@ -65,7 +65,7 @@ export default function Header() {
                 className="flex items-center gap-3 group"
               >
                 <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg group-hover:shadow-orange-200 transition-all duration-300 group-hover:scale-105 overflow-hidden">
-                  <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-full h-full object-contain p-1" />
+                  <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-[85%] h-[85%] object-contain" />
                 </div>
                 <div className="flex flex-col">
                   <span className="text-lg sm:text-2xl font-black tracking-tight text-gray-900 group-hover:text-orange-600 transition-colors">
@@ -105,7 +105,7 @@ export default function Header() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => signOut()}
+                      onClick={() => { signOut({ redirect: false }).then(() => { window.location.href = '/' }) }}
                       className="text-gray-500 hover:text-red-500"
                     >
                       <LogOut className="w-4 h-4 mr-1" />
@@ -161,7 +161,7 @@ export default function Header() {
                       <div className="p-6 border-b bg-gradient-to-r from-orange-500 to-orange-600">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
-                            <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-full h-full object-contain p-1" />
+                            <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-[85%] h-[85%] object-contain" />
                           </div>
                           <div>
                             <h2 className="text-white font-bold text-lg">DAPA RUN</h2>
@@ -215,7 +215,7 @@ export default function Header() {
                               </Button>
                             )}
                             <Button
-                              onClick={() => { signOut(); setMobileMenuOpen(false) }}
+                              onClick={() => { signOut({ redirect: false }).then(() => { window.location.href = '/' }); setMobileMenuOpen(false) }}
                               variant="outline"
                               className="w-full font-semibold text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
                             >

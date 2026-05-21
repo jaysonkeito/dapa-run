@@ -20,7 +20,10 @@ export const metadata: Metadata = {
   keywords: ["DAPA RUN", "running events", "marathon", "fun run", "ultra marathon", "Philippines", "race organizer"],
   authors: [{ name: "DAPA RUN" }],
   icons: {
-    icon: "/dapa-run-logo.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "64x64" },
+      { url: "/favicon.png", sizes: "512x512", type: "image/png" },
+    ],
   },
   openGraph: {
     title: "DAPA RUN - Run With Purpose",

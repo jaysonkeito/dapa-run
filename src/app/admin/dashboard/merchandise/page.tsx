@@ -70,6 +70,7 @@ export default function AdminMerchandisePage() {
   const [selectedItem, setSelectedItem] = useState<MerchItem | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
 
   const fetchItems = async () => {
     try {
@@ -164,6 +165,17 @@ export default function AdminMerchandisePage() {
     accessories: 'bg-emerald-500 text-white',
   }
 
+  const categoryFilterOptions = [
+    { value: 'all', label: 'All' },
+    { value: 'accessories', label: 'Accessories' },
+    { value: 'apparel', label: 'Apparel' },
+    { value: 'shoes', label: 'Shoes' },
+  ]
+
+  const filteredItems = categoryFilter === 'all'
+    ? items
+    : items.filter((item) => item.category === categoryFilter)
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -175,6 +187,29 @@ export default function AdminMerchandisePage() {
           <Plus className="w-4 h-4 mr-2" />
           Add Item
         </Button>
+      </div>
+
+      {/* Category Filter */}
+      <div className="flex items-center gap-2 mb-6">
+        {categoryFilterOptions.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => setCategoryFilter(opt.value)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+              categoryFilter === opt.value
+                ? 'bg-orange-500 text-white shadow-md'
+                : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+            }`}
+          >
+            {opt.label}
+            {opt.value === 'all' && (
+              <span className="ml-1.5 text-xs opacity-75">({items.length})</span>
+            )}
+            {opt.value !== 'all' && (
+              <span className="ml-1.5 text-xs opacity-75">({items.filter(i => i.category === opt.value).length})</span>
+            )}
+          </button>
+        ))}
       </div>
 
       <div className="bg-white rounded-xl shadow-md border-0 overflow-hidden">
@@ -198,12 +233,12 @@ export default function AdminMerchandisePage() {
                     Loading...
                   </TableCell>
                 </TableRow>
-              ) : items.length === 0 ? (
+              ) : filteredItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-gray-400">No merchandise found.</TableCell>
+                  <TableCell colSpan={6} className="text-center py-8 text-gray-400">No merchandise found in this category.</TableCell>
                 </TableRow>
               ) : (
-                items.map((item) => (
+                filteredItems.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.name}</TableCell>
                     <TableCell>

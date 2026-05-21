@@ -200,8 +200,8 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-3xl mx-auto">
+      <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Settings</h1>
           <p className="text-gray-500 mt-1">Manage site configuration, team, and account</p>
@@ -219,7 +219,7 @@ export default function AdminSettingsPage() {
       <div className="space-y-6">
         {/* General Info */}
         <Card className="border-0 shadow-md">
-          <CardContent className="p-6">
+          <CardContent className="p-6 sm:p-8">
             <div className="flex items-center gap-2 mb-4">
               <Globe className="w-5 h-5 text-orange-500" />
               <h3 className="font-bold text-gray-900 text-lg">General Info</h3>
@@ -243,7 +243,7 @@ export default function AdminSettingsPage() {
 
         {/* Contact Details */}
         <Card className="border-0 shadow-md">
-          <CardContent className="p-6">
+          <CardContent className="p-6 sm:p-8">
             <div className="flex items-center gap-2 mb-4">
               <Phone className="w-5 h-5 text-orange-500" />
               <h3 className="font-bold text-gray-900 text-lg">Contact Details</h3>
@@ -269,7 +269,7 @@ export default function AdminSettingsPage() {
 
         {/* Social Media */}
         <Card className="border-0 shadow-md">
-          <CardContent className="p-6">
+          <CardContent className="p-6 sm:p-8">
             <div className="flex items-center gap-2 mb-4">
               <Facebook className="w-5 h-5 text-orange-500" />
               <h3 className="font-bold text-gray-900 text-lg">Social Media & Map</h3>
@@ -303,7 +303,7 @@ export default function AdminSettingsPage() {
 
         {/* Images */}
         <Card className="border-0 shadow-md">
-          <CardContent className="p-6">
+          <CardContent className="p-6 sm:p-8">
             <div className="flex items-center gap-2 mb-4">
               <ImageIcon className="w-5 h-5 text-orange-500" />
               <h3 className="font-bold text-gray-900 text-lg">Images</h3>
@@ -327,7 +327,7 @@ export default function AdminSettingsPage() {
 
         {/* Team Management */}
         <Card className="border-0 shadow-md">
-          <CardContent className="p-6">
+          <CardContent className="p-6 sm:p-8">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-orange-500" />
@@ -391,7 +391,7 @@ export default function AdminSettingsPage() {
 
         {/* Change Admin Password */}
         <Card className="border-0 shadow-md">
-          <CardContent className="p-6">
+          <CardContent className="p-6 sm:p-8">
             <div className="flex items-center gap-2 mb-4">
               <Lock className="w-5 h-5 text-orange-500" />
               <h3 className="font-bold text-gray-900 text-lg">Change Admin Password</h3>

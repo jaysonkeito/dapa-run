@@ -14,7 +14,7 @@ export default function Footer() {
           <div className="lg:col-span-1">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center overflow-hidden">
-                <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-full h-full object-contain p-1" />
+                <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-[85%] h-[85%] object-contain" />
               </div>
               <div>
                 <h3 className="text-xl font-bold">DAPA RUN</h3>
