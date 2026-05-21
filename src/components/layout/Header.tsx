@@ -13,6 +13,7 @@ import {
   ChevronRight,
   LogOut,
   User,
+  Shield,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -85,6 +86,17 @@ export default function Header() {
                 </div>
                 {session?.user ? (
                   <div className="flex items-center gap-3">
+                    {(session.user as Record<string, unknown>)?.role === 'admin' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.location.href = '/admin/dashboard'}
+                        className="border-orange-500 text-orange-600 hover:bg-orange-50 font-semibold"
+                      >
+                        <Shield className="w-4 h-4 mr-1" />
+                        Admin Dashboard
+                      </Button>
+                    )}
                     <div className="flex items-center gap-2 text-sm">
                       <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
                         <User className="w-4 h-4 text-orange-600" />
@@ -185,14 +197,25 @@ export default function Header() {
                       </nav>
                       <div className="p-6 border-t space-y-3">
                         {session?.user ? (
-                          <Button
-                            onClick={() => { signOut(); setMobileMenuOpen(false) }}
-                            variant="outline"
-                            className="w-full font-semibold text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
-                          >
-                            <LogOut className="w-4 h-4 mr-2" />
-                            Logout ({session.user.name})
-                          </Button>
+                          <div className="space-y-2">
+                            {(session.user as Record<string, unknown>)?.role === 'admin' && (
+                              <Button
+                                onClick={() => { window.location.href = '/admin/dashboard'; setMobileMenuOpen(false) }}
+                                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold"
+                              >
+                                <Shield className="w-4 h-4 mr-2" />
+                                Admin Dashboard
+                              </Button>
+                            )}
+                            <Button
+                              onClick={() => { signOut(); setMobileMenuOpen(false) }}
+                              variant="outline"
+                              className="w-full font-semibold text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
+                            >
+                              <LogOut className="w-4 h-4 mr-2" />
+                              Logout ({session.user.name})
+                            </Button>
+                          </div>
                         ) : (
                           <Button
                             onClick={() => { setAuthModalTab('login'); setAuthModalOpen(true); setMobileMenuOpen(false) }}

@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
-import { db } from '@/lib/db'
 import {
   LayoutDashboard,
   Calendar,

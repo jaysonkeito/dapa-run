@@ -60,12 +60,28 @@ export default function UserAuthModal() {
           variant: 'destructive',
         })
       } else {
-        toast({
-          title: 'Welcome back!',
-          description: 'You have successfully logged in.',
-        })
+        // Check the user's role after login
+        const sessionRes = await fetch('/api/auth/session')
+        const sessionData = await sessionRes.json()
+        const userRole = sessionData?.user?.role
+
         setAuthModalOpen(false)
         resetForms()
+
+        if (userRole === 'admin') {
+          toast({
+            title: 'Welcome, Admin!',
+            description: 'Redirecting to the Admin Dashboard...',
+          })
+          // Use window.location for a full page navigation to the admin dashboard
+          // This ensures we leave the SPA context entirely
+          window.location.href = '/admin/dashboard'
+        } else {
+          toast({
+            title: 'Welcome back!',
+            description: 'You have successfully logged in.',
+          })
+        }
       }
     } catch {
       toast({
