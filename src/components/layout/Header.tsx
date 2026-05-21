@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession, signOut } from 'next-auth/react'
 import { useStore, type Page } from '@/store/useStore'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
@@ -10,6 +11,8 @@ import {
   Phone,
   X,
   ChevronRight,
+  LogOut,
+  User,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -24,7 +27,8 @@ const navItems: { label: string; page: Page }[] = [
 ]
 
 export default function Header() {
-  const { currentPage, setCurrentPage, cartCount, contactModalOpen, setContactModalOpen, mobileMenuOpen, setMobileMenuOpen } = useStore()
+  const { data: session } = useSession()
+  const { currentPage, setCurrentPage, cartCount, contactModalOpen, setContactModalOpen, mobileMenuOpen, setMobileMenuOpen, setAuthModalOpen, setAuthModalTab } = useStore()
   const count = cartCount()
   const [scrolled, setScrolled] = useState(false)
 
@@ -79,6 +83,35 @@ export default function Header() {
                   <Phone className="w-4 h-4" />
                   <span>+63 917 123 4567</span>
                 </div>
+                {session?.user ? (
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
+                        <User className="w-4 h-4 text-orange-600" />
+                      </div>
+                      <span className="font-medium text-gray-700">{session.user.name}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => signOut()}
+                      className="text-gray-500 hover:text-red-500"
+                    >
+                      <LogOut className="w-4 h-4 mr-1" />
+                      Logout
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={() => { setAuthModalTab('login'); setAuthModalOpen(true) }}
+                    variant="outline"
+                    size="sm"
+                    className="border-orange-500 text-orange-500 hover:bg-orange-50 font-semibold"
+                  >
+                    <User className="w-4 h-4 mr-1" />
+                    Login
+                  </Button>
+                )}
                 <Button
                   onClick={() => setContactModalOpen(true)}
                   className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold shadow-lg shadow-orange-200 hover:shadow-orange-300 transition-all duration-300 hover:scale-105"
@@ -89,6 +122,9 @@ export default function Header() {
 
               {/* Mobile - Cart + Menu */}
               <div className="flex items-center gap-2 md:hidden">
+                {session?.user && (
+                  <span className="text-xs font-medium text-gray-600 max-w-[80px] truncate">{session.user.name}</span>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -147,7 +183,26 @@ export default function Header() {
                           </button>
                         ))}
                       </nav>
-                      <div className="p-6 border-t">
+                      <div className="p-6 border-t space-y-3">
+                        {session?.user ? (
+                          <Button
+                            onClick={() => { signOut(); setMobileMenuOpen(false) }}
+                            variant="outline"
+                            className="w-full font-semibold text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
+                          >
+                            <LogOut className="w-4 h-4 mr-2" />
+                            Logout ({session.user.name})
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={() => { setAuthModalTab('login'); setAuthModalOpen(true); setMobileMenuOpen(false) }}
+                            variant="outline"
+                            className="w-full border-orange-500 text-orange-500 hover:bg-orange-50 font-semibold"
+                          >
+                            <User className="w-4 h-4 mr-2" />
+                            Login / Register
+                          </Button>
+                        )}
                         <Button
                           onClick={() => { setContactModalOpen(true); setMobileMenuOpen(false) }}
                           className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold"

@@ -30,6 +30,10 @@ interface StoreState {
   setMobileMenuOpen: (open: boolean) => void
   contactModalOpen: boolean
   setContactModalOpen: (open: boolean) => void
+  authModalOpen: boolean
+  setAuthModalOpen: (open: boolean) => void
+  authModalTab: 'login' | 'register'
+  setAuthModalTab: (tab: 'login' | 'register') => void
 }
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -73,4 +77,8 @@ export const useStore = create<StoreState>((set, get) => ({
   setMobileMenuOpen: (open) => set({ mobileMenuOpen: open }),
   contactModalOpen: false,
   setContactModalOpen: (open) => set({ contactModalOpen: open }),
+  authModalOpen: false,
+  setAuthModalOpen: (open) => set({ authModalOpen: open }),
+  authModalTab: 'login',
+  setAuthModalTab: (tab) => set({ authModalTab: tab }),
 }))

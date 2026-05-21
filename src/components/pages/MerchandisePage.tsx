@@ -1,24 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useStore } from '@/store/useStore'
-import { merchandise, type MerchItem } from '@/lib/data'
+import { merchandise as fallbackMerch, type MerchItem } from '@/lib/data'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
   ShoppingCart,
   Filter,
-  Star,
   Eye,
+  Loader2,
 } from 'lucide-react'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import {
   Dialog,
   DialogContent,
@@ -27,12 +20,46 @@ import {
 import { motion } from 'framer-motion'
 import { useToast } from '@/hooks/use-toast'
 
+interface DbMerchItem {
+  id: string
+  name: string
+  price: number
+  image: string
+  category: string
+  description: string
+  sizes: string | null
+  badge: string | null
+}
+
 export default function MerchandisePage() {
   const { addToCart } = useStore()
   const { toast } = useToast()
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
-  const [selectedProduct, setSelectedProduct] = useState<MerchItem | null>(null)
+  const [selectedProduct, setSelectedProduct] = useState<DbMerchItem | null>(null)
   const [selectedSize, setSelectedSize] = useState<string>('')
+  const [items, setItems] = useState<DbMerchItem[]>(fallbackMerch.map(m => ({
+    ...m,
+    sizes: m.sizes?.join(',') || null,
+    badge: m.badge || null,
+  })))
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchMerch() {
+      try {
+        const res = await fetch('/api/merchandise')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.length > 0) setItems(data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch merchandise:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchMerch()
+  }, [])
 
   const categories = [
     { value: 'all', label: 'All Products' },
@@ -41,11 +68,16 @@ export default function MerchandisePage() {
     { value: 'accessories', label: 'Accessories' },
   ]
 
-  const filteredItems = merchandise.filter(
+  const filteredItems = items.filter(
     (item) => selectedCategory === 'all' || item.category === selectedCategory
   )
 
-  const handleAddToCart = (item: MerchItem, size?: string) => {
+  const getSizes = (item: DbMerchItem): string[] => {
+    if (!item.sizes) return []
+    return item.sizes.split(',').filter(Boolean)
+  }
+
+  const handleAddToCart = (item: DbMerchItem, size?: string) => {
     addToCart({
       id: size ? `${item.id}-${size}` : item.id,
       name: item.name,
@@ -113,71 +145,81 @@ export default function MerchandisePage() {
       {/* Products Grid */}
       <section className="py-8 sm:py-12 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredItems.map((item, i) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-              >
-                <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 group h-full flex flex-col">
-                  <div className="relative h-56 overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    {item.badge && (
-                      <Badge className="absolute top-3 left-3 bg-orange-500 text-white font-bold text-xs">
-                        {item.badge}
-                      </Badge>
-                    )}
-                    <button
-                      onClick={() => {
-                        setSelectedProduct(item)
-                        setSelectedSize(item.sizes?.[0] || '')
-                      }}
-                      className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
-                    >
-                      <Eye className="w-4 h-4 text-gray-700" />
-                    </button>
-                  </div>
-                  <CardContent className="p-5 flex flex-col flex-1">
-                    <div className="flex-1">
-                      <Badge variant="outline" className="text-xs mb-2 capitalize text-orange-500 border-orange-200">
-                        {item.category}
-                      </Badge>
-                      <h3 className="font-bold text-gray-900 mb-1 group-hover:text-orange-500 transition-colors">
-                        {item.name}
-                      </h3>
-                      <p className="text-gray-500 text-sm line-clamp-2 mb-3">{item.description}</p>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-lg font-bold text-orange-600">
-                        ₱{item.price.toLocaleString()}
-                      </span>
-                      <Button
-                        onClick={() => {
-                          if (item.sizes && item.sizes.length > 0) {
+          {loading ? (
+            <div className="text-center py-16">
+              <Loader2 className="w-8 h-8 text-orange-500 animate-spin mx-auto mb-4" />
+              <p className="text-gray-500">Loading merchandise...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredItems.map((item, i) => {
+                const sizes = getSizes(item)
+                return (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                  >
+                    <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 group h-full flex flex-col">
+                      <div className="relative h-56 overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        {item.badge && (
+                          <Badge className="absolute top-3 left-3 bg-orange-500 text-white font-bold text-xs">
+                            {item.badge}
+                          </Badge>
+                        )}
+                        <button
+                          onClick={() => {
                             setSelectedProduct(item)
-                            setSelectedSize(item.sizes[0])
-                          } else {
-                            handleAddToCart(item)
-                          }
-                        }}
-                        size="sm"
-                        className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold shadow-md"
-                      >
-                        <ShoppingCart className="w-4 h-4 mr-1" />
-                        Add
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
+                            setSelectedSize(sizes[0] || '')
+                          }}
+                          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+                        >
+                          <Eye className="w-4 h-4 text-gray-700" />
+                        </button>
+                      </div>
+                      <CardContent className="p-5 flex flex-col flex-1">
+                        <div className="flex-1">
+                          <Badge variant="outline" className="text-xs mb-2 capitalize text-orange-500 border-orange-200">
+                            {item.category}
+                          </Badge>
+                          <h3 className="font-bold text-gray-900 mb-1 group-hover:text-orange-500 transition-colors">
+                            {item.name}
+                          </h3>
+                          <p className="text-gray-500 text-sm line-clamp-2 mb-3">{item.description}</p>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-lg font-bold text-orange-600">
+                            ₱{item.price.toLocaleString()}
+                          </span>
+                          <Button
+                            onClick={() => {
+                              if (sizes.length > 0) {
+                                setSelectedProduct(item)
+                                setSelectedSize(sizes[0])
+                              } else {
+                                handleAddToCart(item)
+                              }
+                            }}
+                            size="sm"
+                            className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold shadow-md"
+                          >
+                            <ShoppingCart className="w-4 h-4 mr-1" />
+                            Add
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )
+              })}
+            </div>
+          )}
         </div>
       </section>
 
@@ -209,11 +251,11 @@ export default function MerchandisePage() {
                 </div>
                 <p className="text-gray-500 text-sm leading-relaxed">{selectedProduct.description}</p>
 
-                {selectedProduct.sizes && selectedProduct.sizes.length > 0 && (
+                {getSizes(selectedProduct).length > 0 && (
                   <div>
                     <p className="text-sm font-semibold text-gray-700 mb-2">Select Size</p>
                     <div className="flex flex-wrap gap-2">
-                      {selectedProduct.sizes.map((size) => (
+                      {getSizes(selectedProduct).map((size) => (
                         <button
                           key={size}
                           onClick={() => setSelectedSize(size)}

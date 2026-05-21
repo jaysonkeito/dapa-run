@@ -1,14 +1,13 @@
 'use client'
 
 import { useStore } from '@/store/useStore'
-import { upcomingEvents, previousEvents, stats } from '@/lib/data'
+import { upcomingEvents as fallbackUpcoming, stats } from '@/lib/data'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
   ChevronRight,
   MapPin,
-  Clock,
   Calendar,
   Trophy,
   Users,
@@ -16,9 +15,24 @@ import {
   Map,
   ArrowRight,
   Star,
+  Clock,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useEffect, useState, useRef } from 'react'
+
+interface DbEvent {
+  id: string
+  title: string
+  date: string
+  time: string
+  location: string
+  priceRange: string
+  image: string
+  distances: string
+  description: string
+  status: string
+  featured: boolean
+}
 
 function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: string }) {
   const [count, setCount] = useState(0)
@@ -63,6 +77,27 @@ const statIcons = [Trophy, Users, Route, Map]
 
 export default function HomePage() {
   const { setCurrentPage } = useStore()
+  const [upcomingEvents, setUpcomingEvents] = useState<DbEvent[]>(fallbackUpcoming.map(e => ({
+    ...e,
+    distances: e.distances.join(','),
+  })))
+
+  useEffect(() => {
+    async function fetchEvents() {
+      try {
+        const res = await fetch('/api/events?status=upcoming')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.length > 0) setUpcomingEvents(data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch events:', error)
+      }
+    }
+    fetchEvents()
+  }, [])
+
+  const featuredEvent = upcomingEvents[0]
 
   return (
     <div className="space-y-0">
@@ -84,7 +119,7 @@ export default function HomePage() {
               transition={{ duration: 0.6 }}
             >
               <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30 mb-6 px-4 py-1.5 text-sm font-medium">
-                🏃 Next Event: {upcomingEvents[0]?.date}
+                🏃 Next Event: {featuredEvent?.date}
               </Badge>
             </motion.div>
             <motion.h1
@@ -147,13 +182,13 @@ export default function HomePage() {
               View All <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           </div>
-          {upcomingEvents[0] && (
+          {featuredEvent && (
             <Card className="overflow-hidden border-0 shadow-xl hover:shadow-2xl transition-shadow duration-300">
               <div className="grid grid-cols-1 lg:grid-cols-2">
                 <div className="relative h-64 lg:h-auto">
                   <img
-                    src={upcomingEvents[0].image}
-                    alt={upcomingEvents[0].title}
+                    src={featuredEvent.image}
+                    alt={featuredEvent.title}
                     className="w-full h-full object-cover"
                   />
                   <Badge className="absolute top-4 left-4 bg-orange-500 text-white font-bold">
@@ -162,28 +197,28 @@ export default function HomePage() {
                 </div>
                 <CardContent className="p-6 sm:p-8 lg:p-10 flex flex-col justify-center">
                   <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
-                    {upcomingEvents[0].title}
+                    {featuredEvent.title}
                   </h3>
                   <div className="space-y-3 mb-6">
                     <div className="flex items-center gap-3 text-gray-600">
                       <Calendar className="w-5 h-5 text-orange-500" />
-                      <span>{upcomingEvents[0].date} • {upcomingEvents[0].time}</span>
+                      <span>{featuredEvent.date} • {featuredEvent.time}</span>
                     </div>
                     <div className="flex items-center gap-3 text-gray-600">
                       <MapPin className="w-5 h-5 text-orange-500" />
-                      <span>{upcomingEvents[0].location}</span>
+                      <span>{featuredEvent.location}</span>
                     </div>
                     <div className="flex items-center gap-3 text-gray-600">
                       <Route className="w-5 h-5 text-orange-500" />
-                      <span>{upcomingEvents[0].distances.join(' • ')}</span>
+                      <span>{featuredEvent.distances.split(',').join(' • ')}</span>
                     </div>
                     <div className="flex items-center gap-3 text-gray-900 font-semibold">
                       <Star className="w-5 h-5 text-orange-500" />
-                      <span>{upcomingEvents[0].priceRange}</span>
+                      <span>{featuredEvent.priceRange}</span>
                     </div>
                   </div>
                   <p className="text-gray-500 leading-relaxed mb-6">
-                    {upcomingEvents[0].description}
+                    {featuredEvent.description}
                   </p>
                   <Button
                     onClick={() => setCurrentPage('upcoming')}
@@ -243,52 +278,55 @@ export default function HomePage() {
             </Button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {upcomingEvents.slice(0, 3).map((event, i) => (
-              <motion.div
-                key={event.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-              >
-                <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 group cursor-pointer"
-                  onClick={() => setCurrentPage('upcoming')}
+            {upcomingEvents.slice(0, 3).map((event, i) => {
+              const distances = event.distances.split(',').filter(Boolean)
+              return (
+                <motion.div
+                  key={event.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
                 >
-                  <div className="relative h-48 overflow-hidden">
-                    <img
-                      src={event.image}
-                      alt={event.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                    <div className="absolute bottom-3 left-3">
-                      <Badge className="bg-orange-500 text-white font-semibold">
-                        {event.distances[0]} – {event.distances[event.distances.length - 1]}
-                      </Badge>
-                    </div>
-                  </div>
-                  <CardContent className="p-5">
-                    <h3 className="font-bold text-gray-900 group-hover:text-orange-500 transition-colors mb-2">
-                      {event.title}
-                    </h3>
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Calendar className="w-3.5 h-3.5 text-orange-400" />
-                        <span>{event.date}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <MapPin className="w-3.5 h-3.5 text-orange-400" />
-                        <span>{event.location}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                        <Clock className="w-3.5 h-3.5 text-orange-400" />
-                        <span>{event.priceRange}</span>
+                  <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 group cursor-pointer"
+                    onClick={() => setCurrentPage('upcoming')}
+                  >
+                    <div className="relative h-48 overflow-hidden">
+                      <img
+                        src={event.image}
+                        alt={event.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                      <div className="absolute bottom-3 left-3">
+                        <Badge className="bg-orange-500 text-white font-semibold">
+                          {distances[0]} – {distances[distances.length - 1]}
+                        </Badge>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+                    <CardContent className="p-5">
+                      <h3 className="font-bold text-gray-900 group-hover:text-orange-500 transition-colors mb-2">
+                        {event.title}
+                      </h3>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <Calendar className="w-3.5 h-3.5 text-orange-400" />
+                          <span>{event.date}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <MapPin className="w-3.5 h-3.5 text-orange-400" />
+                          <span>{event.location}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                          <Clock className="w-3.5 h-3.5 text-orange-400" />
+                          <span>{event.priceRange}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )
+            })}
           </div>
         </div>
       </section>

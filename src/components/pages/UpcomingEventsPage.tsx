@@ -1,12 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { useStore } from '@/store/useStore'
-import { upcomingEvents } from '@/lib/data'
+import { upcomingEvents as fallbackEvents, type EventData } from '@/lib/data'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Calendar,
   MapPin,
@@ -16,16 +29,59 @@ import {
   ArrowRight,
   Search,
   Filter,
+  Loader2,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useToast } from '@/hooks/use-toast'
 
 export default function UpcomingEventsPage() {
+  const { data: session } = useSession()
+  const { setAuthModalOpen, setAuthModalTab } = useStore()
+  const { toast } = useToast()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDistance, setSelectedDistance] = useState<string>('all')
+  const [events, setEvents] = useState<EventData[]>(fallbackEvents)
+  const [loading, setLoading] = useState(true)
+  const [regDialogOpen, setRegDialogOpen] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null)
+  const [regDistance, setRegDistance] = useState('')
+  const [regLoading, setRegLoading] = useState(false)
+
+  useEffect(() => {
+    async function fetchEvents() {
+      try {
+        const res = await fetch('/api/events?status=upcoming')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.length > 0) {
+            const mapped: EventData[] = data.map((e: Record<string, unknown>) => ({
+              id: e.id as string,
+              title: e.title as string,
+              date: e.date as string,
+              time: e.time as string,
+              location: e.location as string,
+              priceRange: e.priceRange as string,
+              image: e.image as string,
+              distances: (e.distances as string).split(','),
+              description: e.description as string,
+              status: e.status as 'upcoming' | 'past',
+              featured: e.featured as boolean,
+            }))
+            setEvents(mapped)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch events:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchEvents()
+  }, [])
 
   const distances = ['all', '3K', '5K', '10K', '21K', '25K', '42K', '50K', '100K']
 
-  const filteredEvents = upcomingEvents.filter((event) => {
+  const filteredEvents = events.filter((event) => {
     const matchesSearch =
       event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       event.location.toLowerCase().includes(searchQuery.toLowerCase())
@@ -33,6 +89,44 @@ export default function UpcomingEventsPage() {
       selectedDistance === 'all' || event.distances.includes(selectedDistance)
     return matchesSearch && matchesDistance
   })
+
+  const handleRegisterClick = (event: EventData) => {
+    if (!session?.user) {
+      setAuthModalTab('login')
+      setAuthModalOpen(true)
+      toast({
+        title: 'Login Required',
+        description: 'Please login or create an account to register for events.',
+      })
+      return
+    }
+    setSelectedEvent(event)
+    setRegDistance(event.distances[0])
+    setRegDialogOpen(true)
+  }
+
+  const handleRegister = async () => {
+    if (!selectedEvent || !regDistance) return
+    setRegLoading(true)
+    try {
+      const res = await fetch('/api/auth/event-register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId: selectedEvent.id, distance: regDistance }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast({ title: 'Registration Failed', description: data.error || 'Something went wrong.', variant: 'destructive' })
+      } else {
+        toast({ title: 'Registered!', description: `You have registered for ${selectedEvent.title} (${regDistance}).` })
+        setRegDialogOpen(false)
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Something went wrong.', variant: 'destructive' })
+    } finally {
+      setRegLoading(false)
+    }
+  }
 
   return (
     <div>
@@ -96,7 +190,12 @@ export default function UpcomingEventsPage() {
       {/* Events Grid */}
       <section className="py-8 sm:py-12 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {filteredEvents.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-16">
+              <Loader2 className="w-8 h-8 text-orange-500 animate-spin mx-auto mb-4" />
+              <p className="text-gray-500">Loading events...</p>
+            </div>
+          ) : filteredEvents.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-gray-500 text-lg">No events found matching your criteria.</p>
               <Button
@@ -162,7 +261,10 @@ export default function UpcomingEventsPage() {
                               {event.description}
                             </p>
                           </div>
-                          <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold shadow-lg shadow-orange-200 shrink-0">
+                          <Button
+                            onClick={() => handleRegisterClick(event)}
+                            className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold shadow-lg shadow-orange-200 shrink-0"
+                          >
                             Register Now
                             <ArrowRight className="w-4 h-4 ml-2" />
                           </Button>
@@ -176,6 +278,57 @@ export default function UpcomingEventsPage() {
           )}
         </div>
       </section>
+
+      {/* Registration Dialog */}
+      <Dialog open={regDialogOpen} onOpenChange={setRegDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogTitle>Register for Event</DialogTitle>
+          {selectedEvent && (
+            <div className="space-y-4 mt-4">
+              <div>
+                <h3 className="font-bold text-gray-900">{selectedEvent.title}</h3>
+                <p className="text-sm text-gray-500">{selectedEvent.date} • {selectedEvent.time}</p>
+                <p className="text-sm text-gray-500">{selectedEvent.location}</p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-gray-700">Select Distance</p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedEvent.distances.map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setRegDistance(d)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
+                        regDistance === d
+                          ? 'border-orange-500 bg-orange-50 text-orange-600'
+                          : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <Button
+                onClick={handleRegister}
+                disabled={regLoading}
+                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold shadow-lg"
+              >
+                {regLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Registering...
+                  </>
+                ) : (
+                  <>
+                    Confirm Registration — {regDistance}
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

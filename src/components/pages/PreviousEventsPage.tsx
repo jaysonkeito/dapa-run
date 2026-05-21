@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useStore } from '@/store/useStore'
-import { previousEvents } from '@/lib/data'
+import { previousEvents as fallbackEvents, type EventData } from '@/lib/data'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -10,20 +10,52 @@ import { Input } from '@/components/ui/input'
 import {
   Calendar,
   MapPin,
-  Clock,
-  Route,
-  Star,
   Search,
   Trophy,
   ChevronRight,
+  Loader2,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 export default function PreviousEventsPage() {
   const { setCurrentPage, setSelectedResultEvent } = useStore()
   const [searchQuery, setSearchQuery] = useState('')
+  const [events, setEvents] = useState<EventData[]>(fallbackEvents)
+  const [loading, setLoading] = useState(true)
 
-  const filteredEvents = previousEvents.filter((event) =>
+  useEffect(() => {
+    async function fetchEvents() {
+      try {
+        const res = await fetch('/api/events?status=past')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.length > 0) {
+            const mapped: EventData[] = data.map((e: Record<string, unknown>) => ({
+              id: e.id as string,
+              title: e.title as string,
+              date: e.date as string,
+              time: e.time as string,
+              location: e.location as string,
+              priceRange: e.priceRange as string,
+              image: e.image as string,
+              distances: (e.distances as string).split(','),
+              description: e.description as string,
+              status: e.status as 'upcoming' | 'past',
+              featured: e.featured as boolean,
+            }))
+            setEvents(mapped)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch events:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchEvents()
+  }, [])
+
+  const filteredEvents = events.filter((event) =>
     event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     event.location.toLowerCase().includes(searchQuery.toLowerCase())
   )
@@ -78,7 +110,12 @@ export default function PreviousEventsPage() {
       {/* Events Grid */}
       <section className="py-8 sm:py-12 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {filteredEvents.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-16">
+              <Loader2 className="w-8 h-8 text-orange-500 animate-spin mx-auto mb-4" />
+              <p className="text-gray-500">Loading events...</p>
+            </div>
+          ) : filteredEvents.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-gray-500 text-lg">No events found.</p>
               <Button variant="outline" onClick={() => setSearchQuery('')} className="mt-4">

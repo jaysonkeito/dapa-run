@@ -1,0 +1,62 @@
+import { NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import { db } from "@/lib/db"
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: "You must be logged in to register for an event" },
+        { status: 401 }
+      )
+    }
+
+    const userId = (session.user as Record<string, unknown>).id as string
+    const body = await req.json()
+    const { eventId, distance } = body
+
+    if (!eventId || !distance) {
+      return NextResponse.json(
+        { error: "Event ID and distance are required" },
+        { status: 400 }
+      )
+    }
+
+    const event = await db.event.findUnique({ where: { id: eventId } })
+    if (!event) {
+      return NextResponse.json(
+        { error: "Event not found" },
+        { status: 404 }
+      )
+    }
+
+    const existingReg = await db.registration.findFirst({
+      where: { userId, eventId },
+    })
+    if (existingReg) {
+      return NextResponse.json(
+        { error: "You are already registered for this event" },
+        { status: 409 }
+      )
+    }
+
+    const registration = await db.registration.create({
+      data: {
+        userId,
+        eventId,
+        distance,
+      },
+    })
+
+    return NextResponse.json(registration, { status: 201 })
+  } catch (error) {
+    console.error("Event registration error:", error)
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    )
+  }
+}

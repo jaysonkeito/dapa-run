@@ -9,6 +9,7 @@ import PreviousEventsPage from '@/components/pages/PreviousEventsPage'
 import RaceResultsPage from '@/components/pages/RaceResultsPage'
 import MerchandisePage from '@/components/pages/MerchandisePage'
 import CartPage from '@/components/pages/CartPage'
+import UserAuthModal from '@/components/auth/UserAuthModal'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const pageComponents = {
@@ -41,6 +42,7 @@ export default function Home() {
         </AnimatePresence>
       </main>
       <Footer />
+      <UserAuthModal />
     </div>
   )
 }
