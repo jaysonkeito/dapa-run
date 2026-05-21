@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/table'
 import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import ImageUpload from '@/components/ImageUpload'
 
 interface MerchItem {
   id: string
@@ -269,19 +270,19 @@ export default function AdminMerchandisePage() {
                 <Input value={form.badge} onChange={(e) => setForm({ ...form, badge: e.target.value })} placeholder="e.g. Best Seller, New" />
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Image URL</Label>
-                <Input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Sizes (comma-separated, optional)</Label>
-                <Input value={form.sizes} onChange={(e) => setForm({ ...form, sizes: e.target.value })} placeholder="e.g. XS,S,M,L,XL" />
-              </div>
-            </div>
+            <ImageUpload
+              value={form.image}
+              onChange={(url) => setForm({ ...form, image: url })}
+              aspectRatio="1:1"
+              label="Product Image"
+            />
             <div className="space-y-2">
               <Label>Description</Label>
               <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
+            </div>
+            <div className="space-y-2">
+              <Label>Sizes (comma-separated, optional)</Label>
+              <Input value={form.sizes} onChange={(e) => setForm({ ...form, sizes: e.target.value })} placeholder="e.g. XS,S,M,L,XL" />
             </div>
             <div className="flex gap-3 pt-4">
               <Button

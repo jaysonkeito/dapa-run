@@ -182,7 +182,7 @@ export default function RaceResultsPage() {
 
               {Object.entries(filteredEvents).map(([eventId, eventData]) => (
                 <div key={eventId} className="mb-8">
-                  <Card className="overflow-hidden border-0 shadow-lg">
+                  <Card className="overflow-hidden border-0 shadow-lg bg-white">
                     <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 text-white">
                       <div className="flex items-center justify-between">
                         <div>

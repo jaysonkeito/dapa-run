@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useEffect, useState, useRef } from 'react'
+import CountdownTimer from '@/components/CountdownTimer'
 
 interface DbEvent {
   id: string
@@ -220,6 +221,7 @@ export default function HomePage() {
                   <p className="text-gray-500 leading-relaxed mb-6">
                     {featuredEvent.description}
                   </p>
+                  <CountdownTimer targetDate={featuredEvent.date} />
                   <Button
                     onClick={() => setCurrentPage('upcoming')}
                     className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold shadow-lg shadow-orange-200 w-fit"

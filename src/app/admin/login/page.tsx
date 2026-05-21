@@ -60,8 +60,8 @@ export default function AdminLoginPage() {
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-8 text-center">
-            <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-4">
-              <span className="text-white font-black text-2xl">DR</span>
+            <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-4 overflow-hidden">
+              <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-full h-full object-contain p-1" />
             </div>
             <h1 className="text-2xl font-bold text-white">Admin Portal</h1>
             <p className="text-orange-100 text-sm mt-1">DAPA RUN Management System</p>

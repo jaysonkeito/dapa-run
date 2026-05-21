@@ -35,6 +35,20 @@ async function main() {
   })
   console.log("Test user created:", testUser.email)
 
+  // Create a staff user
+  const staffPassword = await bcrypt.hash("staff123", 12)
+  const staffUser = await prisma.user.upsert({
+    where: { email: "staff@daparun.com" },
+    update: {},
+    create: {
+      email: "staff@daparun.com",
+      name: "Staff Member",
+      password: staffPassword,
+      role: "staff",
+    },
+  })
+  console.log("Staff user created:", staffUser.email)
+
   // Create upcoming events
   const upcomingEventsData = [
     {
@@ -349,6 +363,29 @@ async function main() {
     },
   })
   console.log("Test registration created")
+
+  // Create System Settings
+  const defaultSettings = [
+    { key: "site_title", value: "DAPA RUN" },
+    { key: "site_tagline", value: "Run With Purpose" },
+    { key: "site_phone", value: "0975 180 8990" },
+    { key: "site_email", value: "hello@daparun.com" },
+    { key: "site_address", value: "Banilad near Hermenegilda Elementary School, Banilad, Dumaguete City, 6200 Negros Oriental" },
+    { key: "site_facebook", value: "https://web.facebook.com/blackandblues.eshop" },
+    { key: "site_maps_embed", value: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3937.6232526055946!2d123.28512887478401!3d9.277915190793685!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33ab69e8768b6da1%3A0xe1685f0a9af77fe2!2sDapa%20Dumaguete!5e0!3m2!1sen!2sph!4v1779392361642!5m2!1sen!2sph" },
+    { key: "hero_image", value: "/hero-banner.png" },
+    { key: "logo_image", value: "/dapa-run-logo.png" },
+    { key: "site_description", value: "Philippines' premier running event organizer. From fun runs to ultra marathons, we create unforgettable race experiences that challenge and inspire runners of all levels." },
+  ]
+
+  for (const setting of defaultSettings) {
+    await prisma.systemSetting.upsert({
+      where: { key: setting.key },
+      update: { value: setting.value },
+      create: { key: setting.key, value: setting.value },
+    })
+    console.log("Setting created:", setting.key)
+  }
 
   console.log("Seeding complete!")
 }

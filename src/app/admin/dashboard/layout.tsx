@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import {
@@ -13,17 +13,23 @@ import {
   Menu,
   X,
   ChevronRight,
+  BarChart3,
+  Settings,
+  ClipboardList,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { signOut } from 'next-auth/react'
 
-const sidebarItems = [
-  { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-  { label: 'Events', href: '/admin/dashboard/events', icon: Calendar },
-  { label: 'Merchandise', href: '/admin/dashboard/merchandise', icon: ShoppingBag },
-  { label: 'Race Results', href: '/admin/dashboard/results', icon: Trophy },
-  { label: 'Registrations', href: '/admin/dashboard/registrations', icon: Users },
+const allSidebarItems = [
+  { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard, roles: ['admin', 'staff'] },
+  { label: 'Events', href: '/admin/dashboard/events', icon: Calendar, roles: ['admin', 'staff'] },
+  { label: 'Merchandise', href: '/admin/dashboard/merchandise', icon: ShoppingBag, roles: ['admin'] },
+  { label: 'Race Results', href: '/admin/dashboard/results', icon: Trophy, roles: ['admin', 'staff'] },
+  { label: 'Registrations', href: '/admin/dashboard/registrations', icon: ClipboardList, roles: ['admin', 'staff'] },
+  { label: 'Users', href: '/admin/dashboard/users', icon: Users, roles: ['admin'] },
+  { label: 'Reports', href: '/admin/dashboard/reports', icon: BarChart3, roles: ['admin'] },
+  { label: 'Settings', href: '/admin/dashboard/settings', icon: Settings, roles: ['admin'] },
 ]
 
 export default function AdminDashboardLayout({
@@ -36,13 +42,20 @@ export default function AdminDashboardLayout({
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
+  const userRole = (session?.user as Record<string, unknown>)?.role as string | undefined
+
+  const sidebarItems = useMemo(() => {
+    if (!userRole) return []
+    return allSidebarItems.filter((item) => item.roles.includes(userRole))
+  }, [userRole])
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/admin/login')
-    } else if (status === 'authenticated' && (session?.user as Record<string, unknown>)?.role !== 'admin') {
+    } else if (status === 'authenticated' && userRole !== 'admin' && userRole !== 'staff') {
       router.push('/admin/login')
     }
-  }, [session, status, router])
+  }, [session, status, router, userRole])
 
   if (status === 'loading') {
     return (
@@ -55,7 +68,7 @@ export default function AdminDashboardLayout({
     )
   }
 
-  if (!session || (session.user as Record<string, unknown>)?.role !== 'admin') {
+  if (!session || (userRole !== 'admin' && userRole !== 'staff')) {
     return null
   }
 
@@ -64,12 +77,12 @@ export default function AdminDashboardLayout({
       {/* Sidebar - Desktop */}
       <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 bg-gray-900">
         <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-800">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
-            <span className="text-white font-black text-lg">DR</span>
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center overflow-hidden">
+            <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-full h-full object-contain p-1" />
           </div>
           <div>
             <h1 className="text-white font-bold text-lg">DAPA RUN</h1>
-            <p className="text-gray-400 text-xs">Admin Panel</p>
+            <p className="text-gray-400 text-xs capitalize">{userRole} Panel</p>
           </div>
         </div>
         <nav className="flex-1 py-4 space-y-1 px-3">
@@ -111,12 +124,12 @@ export default function AdminDashboardLayout({
           <aside className="fixed inset-y-0 left-0 w-64 bg-gray-900 z-50">
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-800">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
-                  <span className="text-white font-black text-lg">DR</span>
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center overflow-hidden">
+                  <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-full h-full object-contain p-1" />
                 </div>
                 <div>
                   <h1 className="text-white font-bold text-lg">DAPA RUN</h1>
-                  <p className="text-gray-400 text-xs">Admin Panel</p>
+                  <p className="text-gray-400 text-xs capitalize">{userRole} Panel</p>
                 </div>
               </div>
               <button onClick={() => setSidebarOpen(false)} className="text-gray-400 hover:text-white">
@@ -161,7 +174,7 @@ export default function AdminDashboardLayout({
                 <Menu className="w-6 h-6" />
               </button>
               <div className="flex items-center gap-2 text-sm text-gray-500">
-                <button onClick={() => router.push('/admin/dashboard')} className="hover:text-orange-500">Admin</button>
+                <button onClick={() => router.push('/admin/dashboard')} className="hover:text-orange-500 capitalize">{userRole}</button>
                 {pathname !== '/admin/dashboard' && (
                   <>
                     <ChevronRight className="w-4 h-4" />
@@ -181,9 +194,9 @@ export default function AdminDashboardLayout({
               </button>
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
-                  <span className="text-orange-600 font-bold text-xs">A</span>
+                  <span className="text-orange-600 font-bold text-xs">{(session.user as Record<string, unknown>)?.name?.toString()?.charAt(0)?.toUpperCase() || 'A'}</span>
                 </div>
-                <span className="text-sm font-medium text-gray-700 hidden sm:block">Admin</span>
+                <span className="text-sm font-medium text-gray-700 hidden sm:block">{(session.user as Record<string, unknown>)?.name?.toString() || 'Admin'}</span>
               </div>
             </div>
           </div>

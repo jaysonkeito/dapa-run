@@ -65,8 +65,8 @@ export default function Header() {
                 onClick={() => handleNavClick('home')}
                 className="flex items-center gap-3 group"
               >
-                <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg group-hover:shadow-orange-200 transition-all duration-300 group-hover:scale-105">
-                  <span className="text-white font-black text-lg sm:text-xl tracking-tighter">DR</span>
+                <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg group-hover:shadow-orange-200 transition-all duration-300 group-hover:scale-105 overflow-hidden">
+                  <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-full h-full object-contain p-1" />
                 </div>
                 <div className="flex flex-col">
                   <span className="text-lg sm:text-2xl font-black tracking-tight text-gray-900 group-hover:text-orange-600 transition-colors">
@@ -82,7 +82,7 @@ export default function Header() {
               <div className="hidden md:flex items-center gap-4">
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <Phone className="w-4 h-4" />
-                  <span>+63 917 123 4567</span>
+                  <span>0975 180 8990</span>
                 </div>
                 {session?.user ? (
                   <div className="flex items-center gap-3">
@@ -161,8 +161,8 @@ export default function Header() {
                     <div className="flex flex-col h-full">
                       <div className="p-6 border-b bg-gradient-to-r from-orange-500 to-orange-600">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                            <span className="text-white font-black text-lg">DR</span>
+                          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
+                            <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-full h-full object-contain p-1" />
                           </div>
                           <div>
                             <h2 className="text-white font-bold text-lg">DAPA RUN</h2>
@@ -333,7 +333,7 @@ export default function Header() {
               <div className="p-6 space-y-4">
                 <div className="bg-orange-50 rounded-xl p-4">
                   <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-1">Phone</p>
-                  <p className="text-gray-900 font-semibold">+63 917 123 4567</p>
+                  <p className="text-gray-900 font-semibold">0975 180 8990</p>
                 </div>
                 <div className="bg-orange-50 rounded-xl p-4">
                   <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-1">Email</p>
@@ -341,14 +341,25 @@ export default function Header() {
                 </div>
                 <div className="bg-orange-50 rounded-xl p-4">
                   <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-1">Address</p>
-                  <p className="text-gray-900 font-semibold">Quezon City, Metro Manila, Philippines</p>
+                  <p className="text-gray-900 font-semibold">Banilad near Hermenegilda Elementary School, Banilad, Dumaguete City, 6200 Negros Oriental</p>
+                </div>
+                <div className="bg-orange-50 rounded-xl p-4 overflow-hidden">
+                  <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-1">Location Map</p>
+                  <iframe
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3937.6232526055946!2d123.28512887478401!3d9.277915190793685!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33ab69e8768b6da1%3A0xe1685f0a9af77fe2!2sDapa%20Dumaguete!5e0!3m2!1sen!2sph!4v1779392361642!5m2!1sen!2sph"
+                    width="100%"
+                    height="150"
+                    style={{ border: 0 }}
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    className="rounded-lg mt-2"
+                  />
                 </div>
                 <div className="bg-orange-50 rounded-xl p-4">
                   <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-1">Social Media</p>
                   <div className="flex gap-3 mt-2">
-                    <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold">FB</div>
-                    <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold">IG</div>
-                    <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold">TW</div>
+                    <a href="https://web.facebook.com/blackandblues.eshop" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold hover:bg-orange-600 transition-colors">FB</a>
                   </div>
                 </div>
               </div>

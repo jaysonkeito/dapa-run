@@ -13,8 +13,8 @@ export default function Footer() {
           {/* Brand */}
           <div className="lg:col-span-1">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
-                <span className="text-white font-black text-lg">DR</span>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center overflow-hidden">
+                <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-full h-full object-contain p-1" />
               </div>
               <div>
                 <h3 className="text-xl font-bold">DAPA RUN</h3>
@@ -70,24 +70,15 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold text-sm uppercase tracking-wider text-orange-400 mb-4">Contact</h4>
             <ul className="space-y-2 text-sm text-gray-400">
-              <li>+63 917 123 4567</li>
+              <li>0975 180 8990</li>
               <li>hello@daparun.com</li>
-              <li>Quezon City, Metro Manila</li>
-              <li>Philippines</li>
+              <li>Banilad, Dumaguete City</li>
+              <li>6200 Negros Oriental</li>
             </ul>
             <div className="flex gap-3 mt-4">
-              <div className="w-8 h-8 rounded-full bg-gray-800 hover:bg-orange-500 flex items-center justify-center text-gray-400 hover:text-white text-xs font-bold cursor-pointer transition-all">
+              <a href="https://web.facebook.com/blackandblues.eshop" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-gray-800 hover:bg-orange-500 flex items-center justify-center text-gray-400 hover:text-white text-xs font-bold cursor-pointer transition-all">
                 FB
-              </div>
-              <div className="w-8 h-8 rounded-full bg-gray-800 hover:bg-orange-500 flex items-center justify-center text-gray-400 hover:text-white text-xs font-bold cursor-pointer transition-all">
-                IG
-              </div>
-              <div className="w-8 h-8 rounded-full bg-gray-800 hover:bg-orange-500 flex items-center justify-center text-gray-400 hover:text-white text-xs font-bold cursor-pointer transition-all">
-                TW
-              </div>
-              <div className="w-8 h-8 rounded-full bg-gray-800 hover:bg-orange-500 flex items-center justify-center text-gray-400 hover:text-white text-xs font-bold cursor-pointer transition-all">
-                YT
-              </div>
+              </a>
             </div>
           </div>
         </div>

@@ -33,6 +33,7 @@ import {
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useToast } from '@/hooks/use-toast'
+import CountdownTimer from '@/components/CountdownTimer'
 
 export default function UpcomingEventsPage() {
   const { data: session } = useSession()
@@ -260,6 +261,7 @@ export default function UpcomingEventsPage() {
                             <p className="text-gray-500 text-sm mt-4 leading-relaxed">
                               {event.description}
                             </p>
+                            <CountdownTimer targetDate={event.date} />
                           </div>
                           <Button
                             onClick={() => handleRegisterClick(event)}

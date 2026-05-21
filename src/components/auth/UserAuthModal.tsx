@@ -176,8 +176,8 @@ export default function UserAuthModal() {
             <X className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-              <span className="text-white font-black text-xl">DR</span>
+            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
+              <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-full h-full object-contain p-1" />
             </div>
             <div>
               <h3 className="text-white font-bold text-xl">DAPA RUN</h3>
