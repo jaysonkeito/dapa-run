@@ -158,7 +158,7 @@ export default function HomePage() {
                 onClick={() => setCurrentPage('results')}
                 variant="outline"
                 size="lg"
-                className="border-white/30 text-white hover:bg-white/10 font-semibold text-base px-8"
+                className="border-orange-400/60 text-orange-300 hover:bg-orange-500/20 hover:text-white hover:border-orange-400 font-semibold text-base px-8 transition-all duration-200"
               >
                 View Race Results
               </Button>

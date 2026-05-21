@@ -24,7 +24,6 @@ const navItems: { label: string; page: Page }[] = [
   { label: 'Previous Events', page: 'previous' },
   { label: 'Race Results', page: 'results' },
   { label: 'Merchandise', page: 'merchandise' },
-  { label: 'Cart', page: 'cart' },
 ]
 
 export default function Header() {
@@ -183,11 +182,6 @@ export default function Header() {
                             )}
                           >
                             <span>{item.label}</span>
-                            {item.page === 'cart' && count > 0 && (
-                              <span className="bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                                {count}
-                              </span>
-                            )}
                             <ChevronRight className={cn(
                               'w-4 h-4 transition-transform',
                               currentPage === item.page ? 'text-orange-500' : 'text-gray-400'
@@ -196,6 +190,19 @@ export default function Header() {
                         ))}
                       </nav>
                       <div className="p-6 border-t space-y-3">
+                        <Button
+                          onClick={() => { handleNavClick('cart'); setMobileMenuOpen(false) }}
+                          variant="outline"
+                          className="w-full border-orange-500 text-orange-500 hover:bg-orange-50 font-semibold relative"
+                        >
+                          <ShoppingCart className="w-4 h-4 mr-2" />
+                          Cart
+                          {count > 0 && (
+                            <span className="ml-2 bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                              {count}
+                            </span>
+                          )}
+                        </Button>
                         {session?.user ? (
                           <div className="space-y-2">
                             {(session.user as Record<string, unknown>)?.role === 'admin' && (
@@ -265,11 +272,6 @@ export default function Header() {
                         className="absolute bottom-0 left-2 right-2 h-0.5 bg-orange-500 rounded-full"
                         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                       />
-                    )}
-                    {item.page === 'cart' && count > 0 && (
-                      <span className="ml-1.5 bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                        {count}
-                      </span>
                     )}
                   </button>
                 ))}

@@ -49,17 +49,18 @@ export default function CountdownTimer({ targetDate, label = 'Registration Close
   const target = useMemo(() => parseDateString(targetDate), [targetDate])
   const isInvalidDate = target === null
 
-  const [timeLeft, setTimeLeft] = useState<TimeLeft>(() => {
-    if (!target) return { days: 0, hours: 0, minutes: 0, seconds: 0 }
-    return calculateTimeLeft(target).timeLeft
-  })
-  const [ended, setEnded] = useState(() => {
-    if (!target) return true
-    return calculateTimeLeft(target).ended
-  })
+  // Start with safe defaults to avoid hydration mismatch
+  // The actual countdown values will be computed in useEffect on the client only
+  const [mounted, setMounted] = useState(false)
+  const [timeLeft, setTimeLeft] = useState<TimeLeft>({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+  const [ended, setEnded] = useState(false)
 
   useEffect(() => {
-    if (!target) return
+    setMounted(true)
+    if (!target) {
+      setEnded(true)
+      return
+    }
 
     const tick = () => {
       const result = calculateTimeLeft(target)
@@ -71,6 +72,30 @@ export default function CountdownTimer({ targetDate, label = 'Registration Close
     const interval = setInterval(tick, 1000)
     return () => clearInterval(interval)
   }, [target])
+
+  // Don't render countdown until client-side hydration is complete
+  if (!mounted) {
+    return (
+      <div className="mt-3">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{label}</p>
+        <div className="flex items-center gap-1.5">
+          {['Days', 'Hrs', 'Min', 'Sec'].map((unit, i) => (
+            <div key={unit} className="flex items-center gap-1.5">
+              <div className="flex flex-col items-center">
+                <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-lg px-2.5 py-1.5 min-w-[44px] text-center shadow-sm">
+                  <span className="text-base sm:text-lg font-bold font-mono">--</span>
+                </div>
+                <span className="text-[10px] text-gray-400 font-medium mt-0.5">{unit}</span>
+              </div>
+              {i < 3 && (
+                <span className="text-orange-400 font-bold text-lg -mt-4">:</span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   if (ended || isInvalidDate) {
     return (
