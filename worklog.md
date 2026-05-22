@@ -60,3 +60,99 @@ Stage Summary:
 - User auth modal on main site with login/register tabs
 - Event registration requires user login - opens auth modal if not logged in
 - All data now persisted in SQLite database via Prisma
+
+---
+Task ID: 3
+Agent: API Developer
+Task: Create POS Orders and On-site Registration API Routes
+
+Work Log:
+- Created POS Orders API at /src/app/api/admin/pos/route.ts
+  - GET: List all POS orders with items, sorted by createdAt desc, formatted response
+  - POST: Create new POS order with order number generation (POS-YYYYMMDD-XXXX), merch item lookup, total calculation, transactional creation
+- Created Single POS Order API at /src/app/api/admin/pos/[id]/route.ts
+  - GET: Fetch single POS order with items for receipt viewing, returns 404 if not found
+- Created On-site Registration API at /src/app/api/admin/onsite-registration/route.ts
+  - GET: List all on-site registrations with event title/date, sorted by createdAt desc
+  - POST: Create new on-site registration with event existence validation
+- All routes use admin/staff role authorization (both 'admin' and 'staff' roles allowed)
+- All routes use try/catch with appropriate error status codes
+- All prices in Philippine Pesos (Int)
+- Dev server running successfully
+
+Stage Summary:
+- 3 API route files created for admin dashboard POS and on-site registration features
+- POS orders support: listing, creation with auto-generated order numbers, receipt viewing
+- On-site registrations support: listing with event details, creation with validation
+- Auth: admin and staff roles authorized for all endpoints
+
+---
+Task ID: 3-POS-Page
+Agent: POS Developer
+Task: Create POS (Point of Sale) page at /admin/dashboard/pos
+
+Work Log:
+- Updated /api/admin/merchandise GET endpoint to allow both admin and staff roles (was admin-only)
+- Added POS link with Monitor icon to admin dashboard sidebar (accessible by admin + staff)
+- Created full POS page at /src/app/admin/dashboard/pos/page.tsx with:
+  - Full-screen layout: Product grid (60%) on LEFT, Order cart (40%) on RIGHT
+  - Product grid with category filter tabs (All/Shoes/Apparel/Accessories), search bar, and product cards
+  - Product cards show image, name, price (₱ formatted), category badge, and "Add" button
+  - Size selector dialog for products with sizes (opens on "Add" click)
+  - Sticky order cart with item list, quantity controls (-/+), remove buttons, and line totals
+  - Customer name field (default "Walk-in Customer"), payment method selector (Cash/GCash/Card)
+  - Big orange gradient "Complete Sale" button with total display
+  - Receipt dialog showing DAPA RUN header, order number, date/time, items table, total, payment method, customer/cashier
+  - Print receipt (window.print) and Close buttons on receipt dialog
+  - POST to /api/admin/pos to complete sale with items, paymentMethod, customerName, staffName
+  - Staff name pulled from session via useSession()
+  - Custom scrollbar styling, responsive design, orange theme consistent with rest of app
+- Page compiles and loads successfully (HTTP 200)
+- Pre-existing lint errors (CountdownTimer.tsx) unrelated to POS changes
+
+Stage Summary:
+- POS page fully functional at /admin/dashboard/pos
+- Products fetched from /api/admin/merchandise (now staff-accessible)
+- Cart with add/remove/quantity controls, size selection for sized items
+- Sale completion creates POSOrder via API, generates receipt
+- Receipt dialog with print support
+- Accessible by both admin and staff roles
+
+---
+Task ID: 3-OnsiteReg-Page
+Agent: On-site Registration Developer
+Task: Create On-site Registration page at /admin/dashboard/onsite-registration
+
+Work Log:
+- Created On-site Registration page at /src/app/admin/dashboard/onsite-registration/page.tsx with:
+  - Top section: Registration form card with orange icon header
+  - Event select dropdown (fetches from /api/events?status=upcoming)
+  - Participant Name (required), Email (optional), Phone (optional) fields
+  - Distance select populated dynamically from selected event's distances field
+  - Payment method toggle buttons: Cash (green), GCash (blue), Card (violet) with icons
+  - Amount Paid input in Philippine Pesos
+  - Selected event info banner below form fields
+  - "Register Participant" orange gradient button + "Clear Form" button
+  - Form validation with toast notifications for missing required fields
+  - On successful registration: confirmation dialog with green checkmark, all registration details, DAPA RUN header
+  - "Print Confirmation" button opens print window with styled confirmation slip
+  - "Close" button on confirmation dialog
+  - Form auto-resets after registration (keeps event and payment method for convenience)
+  - Bottom section: Recent On-site Registrations table
+  - Table columns: Participant (with email), Event (with date), Distance, Payment method, Amount, Date/Time, Staff
+  - Search/filter by participant name
+  - Color-coded payment method badges (green=cash, blue=gcash, violet=card)
+  - Orange distance badges consistent with site theme
+- Added "On-site Registration" sidebar item with UserPlus icon (accessible by admin + staff roles)
+- Updated layout.tsx with UserPlus import and new sidebar entry
+- Uses useSession() for staff name in registration payload
+- POST to /api/admin/onsite-registration with all required fields
+- GET from /api/admin/onsite-registration for registration list
+- Page compiles successfully, lint passes (only pre-existing CountdownTimer error)
+
+Stage Summary:
+- On-site Registration page fully functional at /admin/dashboard/onsite-registration
+- Walk-in participant registration with event/distance/payment selection
+- Confirmation dialog with print-slip support
+- Recent registrations table with search and color-coded badges
+- Accessible by both admin and staff roles

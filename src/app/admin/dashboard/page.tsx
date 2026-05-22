@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
-import { Calendar, Users, ShoppingBag, ClipboardList } from 'lucide-react'
+import { Calendar, Users, ShoppingBag, ClipboardList, Monitor, UserPlus } from 'lucide-react'
 
 interface Stats {
   totalEvents: number
   totalUsers: number
   totalRegistrations: number
   totalMerchandise: number
+  totalPOSSales: number
+  totalOnsiteRegs: number
 }
 
 export default function AdminDashboardPage() {
@@ -18,14 +20,18 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const [eventsRes, merchRes, regRes] = await Promise.all([
+        const [eventsRes, merchRes, regRes, posRes, onsiteRes] = await Promise.all([
           fetch('/api/admin/events'),
           fetch('/api/admin/merchandise'),
           fetch('/api/admin/registrations'),
+          fetch('/api/admin/pos'),
+          fetch('/api/admin/onsite-registration'),
         ])
         const events = await eventsRes.json()
         const merch = await merchRes.json()
         const registrations = await regRes.json()
+        const posOrders = posRes.ok ? await posRes.json() : []
+        const onsiteRegs = onsiteRes.ok ? await onsiteRes.json() : []
 
         // Count unique users from registrations
         const uniqueUsers = new Set(registrations.map((r: Record<string, unknown>) => (r.user as Record<string, unknown>)?.id)).size
@@ -35,10 +41,12 @@ export default function AdminDashboardPage() {
           totalUsers: uniqueUsers || 0,
           totalRegistrations: registrations.length || 0,
           totalMerchandise: merch.length || 0,
+          totalPOSSales: posOrders.length || 0,
+          totalOnsiteRegs: onsiteRegs.length || 0,
         })
       } catch (error) {
         console.error('Failed to fetch stats:', error)
-        setStats({ totalEvents: 0, totalUsers: 0, totalRegistrations: 0, totalMerchandise: 0 })
+        setStats({ totalEvents: 0, totalUsers: 0, totalRegistrations: 0, totalMerchandise: 0, totalPOSSales: 0, totalOnsiteRegs: 0 })
       } finally {
         setLoading(false)
       }
@@ -75,6 +83,20 @@ export default function AdminDashboardPage() {
       color: 'from-purple-500 to-purple-600',
       bgLight: 'bg-purple-50',
     },
+    {
+      title: 'POS Sales',
+      value: stats?.totalPOSSales ?? 0,
+      icon: Monitor,
+      color: 'from-cyan-500 to-cyan-600',
+      bgLight: 'bg-cyan-50',
+    },
+    {
+      title: 'On-site Registrations',
+      value: stats?.totalOnsiteRegs ?? 0,
+      icon: UserPlus,
+      color: 'from-rose-500 to-rose-600',
+      bgLight: 'bg-rose-50',
+    },
   ]
 
   return (
@@ -84,7 +106,7 @@ export default function AdminDashboardPage() {
         <p className="text-gray-500 mt-1">Welcome back to DAPA RUN admin panel</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {statCards.map((card) => {
           const Icon = card.icon
           return (
@@ -126,28 +148,28 @@ export default function AdminDashboardPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer" onClick={() => window.location.href = '/admin/dashboard/merchandise'}>
+        <Card className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer" onClick={() => window.location.href = '/admin/dashboard/pos'}>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
-                <ShoppingBag className="w-5 h-5 text-purple-500" />
+              <div className="w-10 h-10 rounded-lg bg-cyan-50 flex items-center justify-center">
+                <Monitor className="w-5 h-5 text-cyan-500" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Manage Merchandise</h3>
-                <p className="text-sm text-gray-500">Update product catalog</p>
+                <h3 className="font-semibold text-gray-900">Point of Sale</h3>
+                <p className="text-sm text-gray-500">Process on-site merchandise sales</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer" onClick={() => window.location.href = '/admin/dashboard/results'}>
+        <Card className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer" onClick={() => window.location.href = '/admin/dashboard/onsite-registration'}>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <ClipboardList className="w-5 h-5 text-emerald-500" />
+              <div className="w-10 h-10 rounded-lg bg-rose-50 flex items-center justify-center">
+                <UserPlus className="w-5 h-5 text-rose-500" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Race Results</h3>
-                <p className="text-sm text-gray-500">Post and manage results</p>
+                <h3 className="font-semibold text-gray-900">On-site Registration</h3>
+                <p className="text-sm text-gray-500">Register walk-in participants</p>
               </div>
             </div>
           </CardContent>

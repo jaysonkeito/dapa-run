@@ -16,6 +16,8 @@ import {
   BarChart3,
   Settings,
   ClipboardList,
+  Monitor,
+  UserPlus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -27,6 +29,8 @@ const allSidebarItems = [
   { label: 'Merchandise', href: '/admin/dashboard/merchandise', icon: ShoppingBag, roles: ['admin'] },
   { label: 'Race Results', href: '/admin/dashboard/results', icon: Trophy, roles: ['admin', 'staff'] },
   { label: 'Registrations', href: '/admin/dashboard/registrations', icon: ClipboardList, roles: ['admin', 'staff'] },
+  { label: 'On-site Registration', href: '/admin/dashboard/onsite-registration', icon: UserPlus, roles: ['admin', 'staff'] },
+  { label: 'POS', href: '/admin/dashboard/pos', icon: Monitor, roles: ['admin', 'staff'] },
   { label: 'Users', href: '/admin/dashboard/users', icon: Users, roles: ['admin'] },
   { label: 'Reports', href: '/admin/dashboard/reports', icon: BarChart3, roles: ['admin'] },
   { label: 'Settings', href: '/admin/dashboard/settings', icon: Settings, roles: ['admin'] },

@@ -35,6 +35,7 @@ model Event {
   updatedAt   DateTime @updatedAt
   results     RaceResult[]
   registrations Registration[]
+  onsiteRegistrations OnSiteRegistration[]
 }
 
 model MerchItem {
@@ -76,4 +77,44 @@ model SystemSetting {
   value     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model POSOrder {
+  id            String         @id @default(cuid())
+  orderNumber   String         @unique
+  totalAmount   Int
+  paymentMethod String         @default("cash")
+  customerName  String         @default("Walk-in Customer")
+  staffName     String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  items         POSOrderItem[]
+}
+
+model POSOrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  itemId    String
+  itemName  String
+  price     Int
+  quantity  Int
+  size      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  order     POSOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model OnSiteRegistration {
+  id            String   @id @default(cuid())
+  eventId       String
+  participantName  String
+  participantEmail String?
+  participantPhone String?
+  distance      String
+  paymentMethod String   @default("cash")
+  amountPaid    Int      @default(0)
+  staffName     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }
