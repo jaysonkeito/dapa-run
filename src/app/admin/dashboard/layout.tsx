@@ -18,6 +18,7 @@ import {
   ClipboardList,
   Monitor,
   UserPlus,
+  PieChart,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -31,6 +32,7 @@ const allSidebarItems = [
   { label: 'Registrations', href: '/admin/dashboard/registrations', icon: ClipboardList, roles: ['admin', 'staff'] },
   { label: 'On-site Registration', href: '/admin/dashboard/onsite-registration', icon: UserPlus, roles: ['admin', 'staff'] },
   { label: 'POS', href: '/admin/dashboard/pos', icon: Monitor, roles: ['admin', 'staff'] },
+  { label: 'POS Analytics', href: '/admin/dashboard/pos-analytics', icon: PieChart, roles: ['admin'] },
   { label: 'Users', href: '/admin/dashboard/users', icon: Users, roles: ['admin'] },
   { label: 'Reports', href: '/admin/dashboard/reports', icon: BarChart3, roles: ['admin'] },
   { label: 'Settings', href: '/admin/dashboard/settings', icon: Settings, roles: ['admin'] },
@@ -82,7 +84,7 @@ export default function AdminDashboardLayout({
       <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 bg-gray-900">
         <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-800">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center overflow-hidden">
-            <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-[85%] h-[85%] object-contain" />
+            <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-full h-full object-cover" />
           </div>
           <div>
             <h1 className="text-white font-bold text-lg">DAPA RUN</h1>
@@ -129,7 +131,7 @@ export default function AdminDashboardLayout({
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-800">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center overflow-hidden">
-                  <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-[85%] h-[85%] object-contain" />
+                  <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-full h-full object-cover" />
                 </div>
                 <div>
                   <h1 className="text-white font-bold text-lg">DAPA RUN</h1>

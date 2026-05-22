@@ -10,6 +10,7 @@ interface Stats {
   totalRegistrations: number
   totalMerchandise: number
   totalPOSSales: number
+  totalPOSRevenue: number
   totalOnsiteRegs: number
 }
 
@@ -36,17 +37,21 @@ export default function AdminDashboardPage() {
         // Count unique users from registrations
         const uniqueUsers = new Set(registrations.map((r: Record<string, unknown>) => (r.user as Record<string, unknown>)?.id)).size
 
+        // Calculate POS revenue
+        const posRevenue = posOrders.reduce((sum: number, order: Record<string, unknown>) => sum + (order.totalAmount as number || 0), 0)
+
         setStats({
           totalEvents: events.length || 0,
           totalUsers: uniqueUsers || 0,
           totalRegistrations: registrations.length || 0,
           totalMerchandise: merch.length || 0,
           totalPOSSales: posOrders.length || 0,
+          totalPOSRevenue: posRevenue,
           totalOnsiteRegs: onsiteRegs.length || 0,
         })
       } catch (error) {
         console.error('Failed to fetch stats:', error)
-        setStats({ totalEvents: 0, totalUsers: 0, totalRegistrations: 0, totalMerchandise: 0, totalPOSSales: 0, totalOnsiteRegs: 0 })
+        setStats({ totalEvents: 0, totalUsers: 0, totalRegistrations: 0, totalMerchandise: 0, totalPOSSales: 0, totalPOSRevenue: 0, totalOnsiteRegs: 0 })
       } finally {
         setLoading(false)
       }
@@ -86,6 +91,7 @@ export default function AdminDashboardPage() {
     {
       title: 'POS Sales',
       value: stats?.totalPOSSales ?? 0,
+      subtitle: stats?.totalPOSRevenue ? `₱${stats.totalPOSRevenue.toLocaleString()} revenue` : undefined,
       icon: Monitor,
       color: 'from-cyan-500 to-cyan-600',
       bgLight: 'bg-cyan-50',
@@ -122,6 +128,9 @@ export default function AdminDashboardPage() {
                         card.value
                       )}
                     </p>
+                    {card.subtitle && !loading && (
+                      <p className="text-xs font-medium text-gray-400 mt-0.5">{card.subtitle}</p>
+                    )}
                   </div>
                   <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${card.color} flex items-center justify-center shadow-lg`}>
                     <Icon className="w-6 h-6 text-white" />

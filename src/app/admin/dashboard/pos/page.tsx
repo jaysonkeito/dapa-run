@@ -609,7 +609,7 @@ export default function POSPage() {
               <div className="text-center mb-4">
                 <div className="flex items-center justify-center gap-2 mb-1">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center overflow-hidden">
-                    <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-[85%] h-[85%] object-contain" />
+                    <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-full h-full object-cover" />
                   </div>
                   <h2 className="text-xl font-bold text-gray-900">DAPA RUN</h2>
                 </div>

@@ -65,7 +65,7 @@ export default function Header() {
                 className="flex items-center gap-3 group"
               >
                 <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg group-hover:shadow-orange-200 transition-all duration-300 group-hover:scale-105 overflow-hidden">
-                  <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-[85%] h-[85%] object-contain" />
+                  <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-full h-full object-cover" />
                 </div>
                 <div className="flex flex-col">
                   <span className="text-lg sm:text-2xl font-black tracking-tight text-gray-900 group-hover:text-orange-600 transition-colors">
@@ -79,10 +79,6 @@ export default function Header() {
 
               {/* Right side - Contact CTA + Cart (desktop) */}
               <div className="hidden md:flex items-center gap-4">
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <Phone className="w-4 h-4" />
-                  <span>0975 180 8990</span>
-                </div>
                 {session?.user ? (
                   <div className="flex items-center gap-3">
                     {(session.user as Record<string, unknown>)?.role === 'admin' && (
@@ -161,7 +157,7 @@ export default function Header() {
                       <div className="p-6 border-b bg-gradient-to-r from-orange-500 to-orange-600">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
-                            <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-[85%] h-[85%] object-contain" />
+                            <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-full h-full object-cover" />
                           </div>
                           <div>
                             <h2 className="text-white font-bold text-lg">DAPA RUN</h2>
