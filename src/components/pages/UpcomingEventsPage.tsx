@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useStore } from '@/store/useStore'
 import { upcomingEvents as fallbackEvents, type EventData } from '@/lib/data'
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -35,18 +36,34 @@ import { motion } from 'framer-motion'
 import { useToast } from '@/hooks/use-toast'
 import CountdownTimer from '@/components/CountdownTimer'
 
+interface EventApiData extends EventData {
+  regCloseDate?: string
+  regCloseTime?: string
+  basePrice?: number
+  finisherShirtPrice?: number
+  singletPrice?: number
+  finisherShirtSizes?: string | null
+  singletSizes?: string | null
+}
+
 export default function UpcomingEventsPage() {
   const { data: session } = useSession()
   const { setAuthModalOpen, setAuthModalTab } = useStore()
   const { toast } = useToast()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDistance, setSelectedDistance] = useState<string>('all')
-  const [events, setEvents] = useState<EventData[]>(fallbackEvents)
+  const [events, setEvents] = useState<EventApiData[]>(fallbackEvents)
   const [loading, setLoading] = useState(true)
   const [regDialogOpen, setRegDialogOpen] = useState(false)
-  const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null)
+  const [selectedEvent, setSelectedEvent] = useState<EventApiData | null>(null)
   const [regDistance, setRegDistance] = useState('')
   const [regLoading, setRegLoading] = useState(false)
+
+  // Add-on state
+  const [availFinisherShirt, setAvailFinisherShirt] = useState(false)
+  const [finisherShirtSize, setFinisherShirtSize] = useState('')
+  const [availSinglet, setAvailSinglet] = useState(false)
+  const [singletSize, setSingletSize] = useState('')
 
   useEffect(() => {
     async function fetchEvents() {
@@ -55,7 +72,7 @@ export default function UpcomingEventsPage() {
         if (res.ok) {
           const data = await res.json()
           if (data.length > 0) {
-            const mapped: EventData[] = data.map((e: Record<string, unknown>) => ({
+            const mapped: EventApiData[] = data.map((e: Record<string, unknown>) => ({
               id: e.id as string,
               title: e.title as string,
               date: e.date as string,
@@ -67,6 +84,13 @@ export default function UpcomingEventsPage() {
               description: e.description as string,
               status: e.status as 'upcoming' | 'past',
               featured: e.featured as boolean,
+              regCloseDate: (e.regCloseDate as string) || '',
+              regCloseTime: (e.regCloseTime as string) || '',
+              basePrice: (e.basePrice as number) || 0,
+              finisherShirtPrice: (e.finisherShirtPrice as number) || 0,
+              singletPrice: (e.singletPrice as number) || 0,
+              finisherShirtSizes: (e.finisherShirtSizes as string | null) || null,
+              singletSizes: (e.singletSizes as string | null) || null,
             }))
             setEvents(mapped)
           }
@@ -91,7 +115,7 @@ export default function UpcomingEventsPage() {
     return matchesSearch && matchesDistance
   })
 
-  const handleRegisterClick = (event: EventData) => {
+  const handleRegisterClick = (event: EventApiData) => {
     if (!session?.user) {
       setAuthModalTab('login')
       setAuthModalOpen(true)
@@ -103,23 +127,62 @@ export default function UpcomingEventsPage() {
     }
     setSelectedEvent(event)
     setRegDistance(event.distances[0])
+    setAvailFinisherShirt(false)
+    setFinisherShirtSize('')
+    setAvailSinglet(false)
+    setSingletSize('')
     setRegDialogOpen(true)
   }
 
+  // Calculate total amount
+  const totalAmount = useMemo(() => {
+    if (!selectedEvent) return 0
+    let total = selectedEvent.basePrice || 0
+    if (availFinisherShirt) total += selectedEvent.finisherShirtPrice || 0
+    if (availSinglet) total += selectedEvent.singletPrice || 0
+    return total
+  }, [selectedEvent, availFinisherShirt, availSinglet])
+
+  const finisherSizes = useMemo(() => {
+    if (!selectedEvent?.finisherShirtSizes) return []
+    return selectedEvent.finisherShirtSizes.split(',').map(s => s.trim()).filter(Boolean)
+  }, [selectedEvent])
+
+  const singletSizesList = useMemo(() => {
+    if (!selectedEvent?.singletSizes) return []
+    return selectedEvent.singletSizes.split(',').map(s => s.trim()).filter(Boolean)
+  }, [selectedEvent])
+
   const handleRegister = async () => {
     if (!selectedEvent || !regDistance) return
+
+    if (availFinisherShirt && !finisherShirtSize) {
+      toast({ title: 'Missing Size', description: 'Please select a finisher shirt size.', variant: 'destructive' })
+      return
+    }
+    if (availSinglet && !singletSize) {
+      toast({ title: 'Missing Size', description: 'Please select a singlet size.', variant: 'destructive' })
+      return
+    }
+
     setRegLoading(true)
     try {
       const res = await fetch('/api/auth/event-register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId: selectedEvent.id, distance: regDistance }),
+        body: JSON.stringify({
+          eventId: selectedEvent.id,
+          distance: regDistance,
+          finisherShirtSize: availFinisherShirt ? finisherShirtSize : null,
+          singletSize: availSinglet ? singletSize : null,
+          totalAmount,
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
         toast({ title: 'Registration Failed', description: data.error || 'Something went wrong.', variant: 'destructive' })
       } else {
-        toast({ title: 'Registered!', description: `You have registered for ${selectedEvent.title} (${regDistance}).` })
+        toast({ title: 'Registered!', description: `You have registered for ${selectedEvent.title} (${regDistance}). Total: ₱${totalAmount.toLocaleString()}` })
         setRegDialogOpen(false)
       }
     } catch {
@@ -261,7 +324,7 @@ export default function UpcomingEventsPage() {
                             <p className="text-gray-500 text-sm mt-4 leading-relaxed">
                               {event.description}
                             </p>
-                            <CountdownTimer targetDate={event.date} />
+                            <CountdownTimer targetDate={event.regCloseDate || event.date} />
                           </div>
                           <Button
                             onClick={() => handleRegisterClick(event)}
@@ -283,7 +346,7 @@ export default function UpcomingEventsPage() {
 
       {/* Registration Dialog */}
       <Dialog open={regDialogOpen} onOpenChange={setRegDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogTitle>Register for Event</DialogTitle>
           {selectedEvent && (
             <div className="space-y-4 mt-4">
@@ -292,6 +355,8 @@ export default function UpcomingEventsPage() {
                 <p className="text-sm text-gray-500">{selectedEvent.date} • {selectedEvent.time}</p>
                 <p className="text-sm text-gray-500">{selectedEvent.location}</p>
               </div>
+
+              {/* Distance Selector */}
               <div className="space-y-2">
                 <p className="text-sm font-semibold text-gray-700">Select Distance</p>
                 <div className="flex flex-wrap gap-2">
@@ -310,6 +375,91 @@ export default function UpcomingEventsPage() {
                   ))}
                 </div>
               </div>
+
+              {/* Base Price */}
+              {(selectedEvent.basePrice ?? 0) > 0 && (
+                <div className="flex items-center justify-between py-2 border-b">
+                  <span className="text-sm text-gray-600">Base Registration</span>
+                  <span className="text-sm font-semibold text-gray-900">₱{selectedEvent.basePrice.toLocaleString()}</span>
+                </div>
+              )}
+
+              {/* Finisher Shirt Add-on */}
+              {(selectedEvent.finisherShirtPrice ?? 0) > 0 && (
+                <div className="border rounded-lg p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="finisher-shirt"
+                        checked={availFinisherShirt}
+                        onCheckedChange={(checked) => {
+                          setAvailFinisherShirt(!!checked)
+                          if (!checked) setFinisherShirtSize('')
+                        }}
+                      />
+                      <label htmlFor="finisher-shirt" className="text-sm font-medium text-gray-700 cursor-pointer">
+                        Avail Finisher Shirt
+                      </label>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900">+₱{selectedEvent.finisherShirtPrice.toLocaleString()}</span>
+                  </div>
+                  {availFinisherShirt && finisherSizes.length > 0 && (
+                    <Select value={finisherShirtSize} onValueChange={setFinisherShirtSize}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {finisherSizes.map((size) => (
+                          <SelectItem key={size} value={size}>{size}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              )}
+
+              {/* Singlet Add-on */}
+              {(selectedEvent.singletPrice ?? 0) > 0 && (
+                <div className="border rounded-lg p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="singlet"
+                        checked={availSinglet}
+                        onCheckedChange={(checked) => {
+                          setAvailSinglet(!!checked)
+                          if (!checked) setSingletSize('')
+                        }}
+                      />
+                      <label htmlFor="singlet" className="text-sm font-medium text-gray-700 cursor-pointer">
+                        Avail Singlet
+                      </label>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900">+₱{selectedEvent.singletPrice.toLocaleString()}</span>
+                  </div>
+                  {availSinglet && singletSizesList.length > 0 && (
+                    <Select value={singletSize} onValueChange={setSingletSize}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {singletSizesList.map((size) => (
+                          <SelectItem key={size} value={size}>{size}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              )}
+
+              {/* Total Amount */}
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-700">Total Amount</span>
+                  <span className="text-lg font-bold text-orange-600">₱{totalAmount.toLocaleString()}</span>
+                </div>
+              </div>
+
               <Button
                 onClick={handleRegister}
                 disabled={regLoading}
@@ -322,7 +472,7 @@ export default function UpcomingEventsPage() {
                   </>
                 ) : (
                   <>
-                    Confirm Registration — {regDistance}
+                    Confirm Registration — ₱{totalAmount.toLocaleString()}
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </>
                 )}

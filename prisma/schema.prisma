@@ -31,6 +31,13 @@ model Event {
   description String
   status      String   @default("upcoming")
   featured    Boolean  @default(false)
+  regCloseDate String @default("")
+  regCloseTime String @default("")
+  basePrice      Int    @default(0)
+  finisherShirtPrice Int @default(0)
+  singletPrice    Int    @default(0)
+  finisherShirtSizes String?
+  singletSizes       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   results     RaceResult[]
@@ -62,10 +69,13 @@ model RaceResult {
 }
 
 model Registration {
-  id        String   @id @default(cuid())
-  userId    String
-  eventId   String
-  distance  String
+  id              String   @id @default(cuid())
+  userId          String
+  eventId         String
+  distance        String
+  finisherShirtSize String?
+  singletSize       String?
+  totalAmount      Int    @default(0)
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
@@ -113,6 +123,8 @@ model OnSiteRegistration {
   distance      String
   paymentMethod String   @default("cash")
   amountPaid    Int      @default(0)
+  finisherShirtSize String?
+  singletSize       String?
   staffName     String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

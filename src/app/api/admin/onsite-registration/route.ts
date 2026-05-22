@@ -32,6 +32,8 @@ export async function GET() {
       distance: reg.distance,
       paymentMethod: reg.paymentMethod,
       amountPaid: reg.amountPaid,
+      finisherShirtSize: reg.finisherShirtSize,
+      singletSize: reg.singletSize,
       staffName: reg.staffName,
       createdAt: reg.createdAt,
       event: reg.event,
@@ -53,7 +55,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { eventId, participantName, participantEmail, participantPhone, distance, paymentMethod, amountPaid, staffName } = body
+    const { eventId, participantName, participantEmail, participantPhone, distance, paymentMethod, amountPaid, staffName, finisherShirtSize, singletSize } = body
 
     if (!eventId) {
       return NextResponse.json({ error: "Event ID is required" }, { status: 400 })
@@ -86,6 +88,8 @@ export async function POST(req: NextRequest) {
         distance,
         paymentMethod,
         amountPaid: amountPaid ? Number(amountPaid) : 0,
+        finisherShirtSize: finisherShirtSize || null,
+        singletSize: singletSize || null,
         staffName: staffName || null,
       },
       include: {

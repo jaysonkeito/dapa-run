@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
     const userId = (session.user as Record<string, unknown>).id as string
     const body = await req.json()
-    const { eventId, distance } = body
+    const { eventId, distance, finisherShirtSize, singletSize, totalAmount } = body
 
     if (!eventId || !distance) {
       return NextResponse.json(
@@ -43,11 +43,27 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Server-side total amount validation
+    let computedTotal = event.basePrice
+    if (finisherShirtSize) {
+      computedTotal += event.finisherShirtPrice
+    }
+    if (singletSize) {
+      computedTotal += event.singletPrice
+    }
+
+    const validatedTotalAmount = typeof totalAmount === 'number' && totalAmount === computedTotal
+      ? computedTotal
+      : computedTotal
+
     const registration = await db.registration.create({
       data: {
         userId,
         eventId,
         distance,
+        finisherShirtSize: finisherShirtSize || null,
+        singletSize: singletSize || null,
+        totalAmount: validatedTotalAmount,
       },
     })
 

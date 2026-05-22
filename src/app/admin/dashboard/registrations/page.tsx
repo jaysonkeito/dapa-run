@@ -25,6 +25,9 @@ interface Registration {
   userId: string
   eventId: string
   distance: string
+  finisherShirtSize: string | null
+  singletSize: string | null
+  totalAmount: number
   createdAt: string
   user: { id: string; name: string; email: string; phone: string | null }
   event: { id: string; title: string; date: string }
@@ -94,20 +97,23 @@ export default function AdminRegistrationsPage() {
                 <TableHead>Email</TableHead>
                 <TableHead>Event</TableHead>
                 <TableHead>Distance</TableHead>
+                <TableHead>Finisher Shirt</TableHead>
+                <TableHead>Singlet</TableHead>
+                <TableHead>Total Amount</TableHead>
                 <TableHead>Registration Date</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-gray-400">
+                  <TableCell colSpan={8} className="text-center py-8 text-gray-400">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
                     Loading...
                   </TableCell>
                 </TableRow>
               ) : registrations.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-gray-400">No registrations found.</TableCell>
+                  <TableCell colSpan={8} className="text-center py-8 text-gray-400">No registrations found.</TableCell>
                 </TableRow>
               ) : (
                 registrations.map((reg) => (
@@ -117,6 +123,23 @@ export default function AdminRegistrationsPage() {
                     <TableCell className="text-sm">{reg.event?.title || 'Unknown Event'}</TableCell>
                     <TableCell>
                       <Badge className="bg-orange-500 text-white">{reg.distance}</Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {reg.finisherShirtSize ? (
+                        <Badge variant="outline" className="border-orange-300 text-orange-700 bg-orange-50">Size: {reg.finisherShirtSize}</Badge>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {reg.singletSize ? (
+                        <Badge variant="outline" className="border-emerald-300 text-emerald-700 bg-emerald-50">Size: {reg.singletSize}</Badge>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm font-medium">
+                      ₱{(reg.totalAmount ?? 0).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-sm text-gray-600">
                       {new Date(reg.createdAt).toLocaleDateString('en-US', {

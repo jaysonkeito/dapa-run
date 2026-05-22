@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -49,6 +50,11 @@ interface Event {
   date: string
   distances: string
   status: string
+  basePrice?: number
+  finisherShirtPrice?: number
+  singletPrice?: number
+  finisherShirtSizes?: string | null
+  singletSizes?: string | null
 }
 
 interface OnSiteRegistration {
@@ -60,6 +66,8 @@ interface OnSiteRegistration {
   distance: string
   paymentMethod: string
   amountPaid: number
+  finisherShirtSize: string | null
+  singletSize: string | null
   staffName: string | null
   createdAt: string
   event: { title: string; date: string }
@@ -81,6 +89,10 @@ const emptyForm = {
   distance: '',
   paymentMethod: 'cash' as PaymentMethod,
   amountPaid: '',
+  availFinisherShirt: false,
+  finisherShirtSize: '',
+  availSinglet: false,
+  singletSize: '',
 }
 
 export default function OnSiteRegistrationPage() {
@@ -134,11 +146,10 @@ export default function OnSiteRegistrationPage() {
   // When event changes, update available distances
   useEffect(() => {
     if (form.eventId) {
-      const selectedEvent = events.find((e) => e.id === form.eventId)
-      if (selectedEvent?.distances) {
-        const distances = selectedEvent.distances.split(',').map((d) => d.trim()).filter(Boolean)
+      const selectedEv = events.find((e) => e.id === form.eventId)
+      if (selectedEv?.distances) {
+        const distances = selectedEv.distances.split(',').map((d) => d.trim()).filter(Boolean)
         setAvailableDistances(distances)
-        // Reset distance if current selection is not in new distances
         if (form.distance && !distances.includes(form.distance)) {
           setForm((prev) => ({ ...prev, distance: '' }))
         }
@@ -151,6 +162,27 @@ export default function OnSiteRegistrationPage() {
       setForm((prev) => ({ ...prev, distance: '' }))
     }
   }, [form.eventId, events])
+
+  const selectedEvent = events.find((e) => e.id === form.eventId)
+
+  // Get available sizes from the selected event
+  const finisherSizes = useMemo(() => {
+    if (!selectedEvent?.finisherShirtSizes) return []
+    return selectedEvent.finisherShirtSizes.split(',').map(s => s.trim()).filter(Boolean)
+  }, [selectedEvent])
+
+  const singletSizesList = useMemo(() => {
+    if (!selectedEvent?.singletSizes) return []
+    return selectedEvent.singletSizes.split(',').map(s => s.trim()).filter(Boolean)
+  }, [selectedEvent])
+
+  // Calculate total amount
+  const calculatedTotal = useMemo(() => {
+    let total = selectedEvent?.basePrice || 0
+    if (form.availFinisherShirt) total += selectedEvent?.finisherShirtPrice || 0
+    if (form.availSinglet) total += selectedEvent?.singletPrice || 0
+    return total
+  }, [selectedEvent, form.availFinisherShirt, form.availSinglet])
 
   const handleRegister = async () => {
     if (!form.eventId) {
@@ -165,10 +197,20 @@ export default function OnSiteRegistrationPage() {
       toast({ title: 'Missing Field', description: 'Please select a distance.', variant: 'destructive' })
       return
     }
+    if (form.availFinisherShirt && !form.finisherShirtSize) {
+      toast({ title: 'Missing Size', description: 'Please select a finisher shirt size.', variant: 'destructive' })
+      return
+    }
+    if (form.availSinglet && !form.singletSize) {
+      toast({ title: 'Missing Size', description: 'Please select a singlet size.', variant: 'destructive' })
+      return
+    }
 
     setSubmitting(true)
     try {
       const staffName = (session?.user as Record<string, unknown>)?.name as string | undefined
+      const amountToPay = form.amountPaid ? Number(form.amountPaid) : calculatedTotal
+
       const res = await fetch('/api/admin/onsite-registration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -179,7 +221,9 @@ export default function OnSiteRegistrationPage() {
           participantPhone: form.participantPhone.trim() || null,
           distance: form.distance,
           paymentMethod: form.paymentMethod,
-          amountPaid: form.amountPaid ? Number(form.amountPaid) : 0,
+          amountPaid: amountToPay,
+          finisherShirtSize: form.availFinisherShirt ? form.finisherShirtSize : null,
+          singletSize: form.availSinglet ? form.singletSize : null,
           staffName: staffName || null,
         }),
       })
@@ -196,8 +240,8 @@ export default function OnSiteRegistrationPage() {
       // Reset form for next participant
       setForm({
         ...emptyForm,
-        eventId: form.eventId, // Keep event selected for convenience
-        paymentMethod: form.paymentMethod, // Keep payment method for convenience
+        eventId: form.eventId,
+        paymentMethod: form.paymentMethod,
       })
 
       // Refresh registrations list
@@ -252,6 +296,8 @@ export default function OnSiteRegistrationPage() {
         ${reg.participantEmail ? `<div class="row"><span class="label">Email</span><span class="value">${reg.participantEmail}</span></div>` : ''}
         ${reg.participantPhone ? `<div class="row"><span class="label">Phone</span><span class="value">${reg.participantPhone}</span></div>` : ''}
         <div class="row"><span class="label">Distance</span><span class="value">${reg.distance}</span></div>
+        ${reg.finisherShirtSize ? `<div class="row"><span class="label">Finisher Shirt</span><span class="value">Size: ${reg.finisherShirtSize}</span></div>` : ''}
+        ${reg.singletSize ? `<div class="row"><span class="label">Singlet</span><span class="value">Size: ${reg.singletSize}</span></div>` : ''}
         <div class="row"><span class="label">Payment Method</span><span class="value">${reg.paymentMethod?.toUpperCase()}</span></div>
         <div class="row"><span class="label">Amount Paid</span><span class="value">₱${reg.amountPaid?.toLocaleString() || '0'}</span></div>
         <div class="row"><span class="label">Date/Time</span><span class="value">${new Date(reg.createdAt).toLocaleString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div>
@@ -278,8 +324,6 @@ export default function OnSiteRegistrationPage() {
     reg.participantName.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const selectedEvent = events.find((e) => e.id === form.eventId)
-
   return (
     <div className="space-y-6">
       {/* Top Section - Registration Form */}
@@ -304,7 +348,7 @@ export default function OnSiteRegistrationPage() {
               </Label>
               <Select
                 value={form.eventId}
-                onValueChange={(value) => setForm((prev) => ({ ...prev, eventId: value, distance: '' }))}
+                onValueChange={(value) => setForm((prev) => ({ ...prev, eventId: value, distance: '', availFinisherShirt: false, finisherShirtSize: '', availSinglet: false, singletSize: '' }))}
               >
                 <SelectTrigger id="event-select" className="w-full">
                   <SelectValue placeholder="Select an event..." />
@@ -419,19 +463,100 @@ export default function OnSiteRegistrationPage() {
             {/* Amount Paid */}
             <div className="space-y-2">
               <Label htmlFor="amount-paid" className="text-sm font-medium">
-                Amount Paid (₱)
+                Amount Paid (₱) {calculatedTotal > 0 && <span className="text-gray-400 font-normal">Suggested: ₱{calculatedTotal.toLocaleString()}</span>}
               </Label>
               <Input
                 id="amount-paid"
                 type="number"
                 min="0"
                 step="1"
-                placeholder="0"
+                placeholder={calculatedTotal > 0 ? String(calculatedTotal) : "0"}
                 value={form.amountPaid}
                 onChange={(e) => setForm((prev) => ({ ...prev, amountPaid: e.target.value }))}
               />
             </div>
           </div>
+
+          {/* Add-ons Section */}
+          {selectedEvent && ((selectedEvent.finisherShirtPrice ?? 0) > 0 || (selectedEvent.singletPrice ?? 0) > 0) && (
+            <div className="mt-4 border rounded-lg p-4 bg-orange-50/50 space-y-4">
+              <h3 className="font-semibold text-gray-800 text-sm uppercase tracking-wider">Optional Add-ons</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Finisher Shirt */}
+                {(selectedEvent.finisherShirtPrice ?? 0) > 0 && (
+                  <div className="border rounded-lg p-3 bg-white space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="onsite-finisher-shirt"
+                          checked={form.availFinisherShirt}
+                          onCheckedChange={(checked) => {
+                            setForm(prev => ({ ...prev, availFinisherShirt: !!checked, finisherShirtSize: '' }))
+                          }}
+                        />
+                        <label htmlFor="onsite-finisher-shirt" className="text-sm font-medium text-gray-700 cursor-pointer">
+                          Avail Finisher Shirt
+                        </label>
+                      </div>
+                      <span className="text-sm font-semibold text-gray-900">+₱{selectedEvent.finisherShirtPrice?.toLocaleString()}</span>
+                    </div>
+                    {form.availFinisherShirt && finisherSizes.length > 0 && (
+                      <Select value={form.finisherShirtSize} onValueChange={(v) => setForm(prev => ({ ...prev, finisherShirtSize: v }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select size" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {finisherSizes.map((size) => (
+                            <SelectItem key={size} value={size}>{size}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                )}
+
+                {/* Singlet */}
+                {(selectedEvent.singletPrice ?? 0) > 0 && (
+                  <div className="border rounded-lg p-3 bg-white space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="onsite-singlet"
+                          checked={form.availSinglet}
+                          onCheckedChange={(checked) => {
+                            setForm(prev => ({ ...prev, availSinglet: !!checked, singletSize: '' }))
+                          }}
+                        />
+                        <label htmlFor="onsite-singlet" className="text-sm font-medium text-gray-700 cursor-pointer">
+                          Avail Singlet
+                        </label>
+                      </div>
+                      <span className="text-sm font-semibold text-gray-900">+₱{selectedEvent.singletPrice?.toLocaleString()}</span>
+                    </div>
+                    {form.availSinglet && singletSizesList.length > 0 && (
+                      <Select value={form.singletSize} onValueChange={(v) => setForm(prev => ({ ...prev, singletSize: v }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select size" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {singletSizesList.map((size) => (
+                            <SelectItem key={size} value={size}>{size}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {calculatedTotal > 0 && (
+                <div className="flex items-center justify-between py-2 px-3 bg-white rounded-lg border">
+                  <span className="text-sm font-semibold text-gray-700">Calculated Total</span>
+                  <span className="text-lg font-bold text-orange-600">₱{calculatedTotal.toLocaleString()}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Selected Event Info */}
           {selectedEvent && (
@@ -511,6 +636,8 @@ export default function OnSiteRegistrationPage() {
                   <TableHead>Participant</TableHead>
                   <TableHead>Event</TableHead>
                   <TableHead>Distance</TableHead>
+                  <TableHead>Finisher Shirt</TableHead>
+                  <TableHead>Singlet</TableHead>
                   <TableHead>Payment</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Date</TableHead>
@@ -520,14 +647,14 @@ export default function OnSiteRegistrationPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-400">
+                    <TableCell colSpan={9} className="text-center py-8 text-gray-400">
                       <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
                       Loading registrations...
                     </TableCell>
                   </TableRow>
                 ) : filteredRegistrations.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-400">
+                    <TableCell colSpan={9} className="text-center py-8 text-gray-400">
                       {searchQuery ? 'No registrations match your search.' : 'No on-site registrations yet.'}
                     </TableCell>
                   </TableRow>
@@ -550,6 +677,20 @@ export default function OnSiteRegistrationPage() {
                       </TableCell>
                       <TableCell>
                         <Badge className="bg-orange-500 text-white text-xs">{reg.distance}</Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {reg.finisherShirtSize ? (
+                          <Badge variant="outline" className="border-orange-300 text-orange-700 bg-orange-50 text-xs">Size: {reg.finisherShirtSize}</Badge>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {reg.singletSize ? (
+                          <Badge variant="outline" className="border-emerald-300 text-emerald-700 bg-emerald-50 text-xs">Size: {reg.singletSize}</Badge>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -641,6 +782,18 @@ export default function OnSiteRegistrationPage() {
                   <span className="text-sm text-gray-500">Distance</span>
                   <Badge className="bg-orange-500 text-white">{lastRegistration.distance}</Badge>
                 </div>
+                {lastRegistration.finisherShirtSize && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">Finisher Shirt</span>
+                    <Badge variant="outline" className="border-orange-300 text-orange-700 bg-orange-50">Size: {lastRegistration.finisherShirtSize}</Badge>
+                  </div>
+                )}
+                {lastRegistration.singletSize && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">Singlet</span>
+                    <Badge variant="outline" className="border-emerald-300 text-emerald-700 bg-emerald-50">Size: {lastRegistration.singletSize}</Badge>
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Payment Method</span>
                   <Badge

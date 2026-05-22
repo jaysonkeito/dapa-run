@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { title, date, time, location, priceRange, image, distances, description, status, featured } = body
+    const { title, date, time, location, priceRange, image, distances, description, status, featured, regCloseDate, regCloseTime, basePrice, finisherShirtPrice, singletPrice, finisherShirtSizes, singletSizes } = body
 
     if (!title || !date || !time || !location) {
       return NextResponse.json({ error: "Title, date, time, and location are required" }, { status: 400 })
@@ -48,6 +48,13 @@ export async function POST(req: NextRequest) {
         description: description || "",
         status: status || "upcoming",
         featured: featured || false,
+        regCloseDate: regCloseDate || "",
+        regCloseTime: regCloseTime || "",
+        basePrice: basePrice || 0,
+        finisherShirtPrice: finisherShirtPrice || 0,
+        singletPrice: singletPrice || 0,
+        finisherShirtSizes: finisherShirtSizes || null,
+        singletSizes: singletSizes || null,
       },
     })
 
