@@ -38,7 +38,7 @@ export async function GET(request: Request) {
     })
 
     // Filter by date range if provided
-    const filterByDate = (dateStr: string) => {
+    const filterByDate = (dateStr: string | Date) => {
       const d = new Date(dateStr)
       if (from && d < new Date(from)) return false
       if (to && d > new Date(to + 'T23:59:59')) return false

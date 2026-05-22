@@ -32,7 +32,7 @@ interface DbEvent {
   distances: string
   description: string
   status: string
-  featured: boolean
+  featured?: boolean
 }
 
 function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: string }) {

@@ -30,7 +30,7 @@ export default function AdminDashboardPage() {
         ])
 
         // Safely parse each response - fallback to empty array if not OK or not an array
-        const safeParseArray = async (res: Response): Promise<unknown[]> => {
+        const safeParseArray = async (res: Response): Promise<Record<string, unknown>[]> => {
           if (!res.ok) return []
           try {
             const data = await res.json()
@@ -47,10 +47,10 @@ export default function AdminDashboardPage() {
         const onsiteRegs = await safeParseArray(onsiteRes)
 
         // Count unique users from registrations
-        const uniqueUsers = new Set(registrations.map((r: Record<string, unknown>) => (r.user as Record<string, unknown>)?.id)).size
+        const uniqueUsers = new Set(registrations.map((r) => (r.user as Record<string, unknown> | undefined)?.id)).size
 
         // Calculate POS revenue
-        const posRevenue = posOrders.reduce((sum: number, order: Record<string, unknown>) => sum + (order.totalAmount as number || 0), 0)
+        const posRevenue = posOrders.reduce((sum, order) => sum + ((order.totalAmount as number) || 0), 0)
 
         setStats({
           totalEvents: events.length || 0,

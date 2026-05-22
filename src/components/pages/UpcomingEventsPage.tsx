@@ -380,7 +380,7 @@ export default function UpcomingEventsPage() {
               {(selectedEvent.basePrice ?? 0) > 0 && (
                 <div className="flex items-center justify-between py-2 border-b">
                   <span className="text-sm text-gray-600">Base Registration</span>
-                  <span className="text-sm font-semibold text-gray-900">₱{selectedEvent.basePrice.toLocaleString()}</span>
+                  <span className="text-sm font-semibold text-gray-900">₱{(selectedEvent.basePrice ?? 0).toLocaleString()}</span>
                 </div>
               )}
 
@@ -401,7 +401,7 @@ export default function UpcomingEventsPage() {
                         Avail Finisher Shirt
                       </label>
                     </div>
-                    <span className="text-sm font-semibold text-gray-900">+₱{selectedEvent.finisherShirtPrice.toLocaleString()}</span>
+                    <span className="text-sm font-semibold text-gray-900">+₱{(selectedEvent.finisherShirtPrice ?? 0).toLocaleString()}</span>
                   </div>
                   {availFinisherShirt && finisherSizes.length > 0 && (
                     <Select value={finisherShirtSize} onValueChange={setFinisherShirtSize}>
@@ -435,7 +435,7 @@ export default function UpcomingEventsPage() {
                         Avail Singlet
                       </label>
                     </div>
-                    <span className="text-sm font-semibold text-gray-900">+₱{selectedEvent.singletPrice.toLocaleString()}</span>
+                    <span className="text-sm font-semibold text-gray-900">+₱{(selectedEvent.singletPrice ?? 0).toLocaleString()}</span>
                   </div>
                   {availSinglet && singletSizesList.length > 0 && (
                     <Select value={singletSize} onValueChange={setSingletSize}>
