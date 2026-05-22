@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -36,9 +37,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Loader2, Download, AlertTriangle } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import ImageUpload from '@/components/ImageUpload'
+import { generateCSV, formatPriceForReport } from '@/lib/report-utils'
 
 interface MerchItem {
   id: string
@@ -49,6 +51,8 @@ interface MerchItem {
   description: string
   sizes: string | null
   badge: string | null
+  stock: number
+  soldCount: number
 }
 
 const emptyForm = {
@@ -59,10 +63,13 @@ const emptyForm = {
   description: '',
   sizes: '',
   badge: '',
+  stock: 0,
 }
 
 export default function AdminMerchandisePage() {
   const { toast } = useToast()
+  const { data: session } = useSession()
+  const isAdmin = (session?.user as Record<string, unknown>)?.role === 'admin'
   const [items, setItems] = useState<MerchItem[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -102,6 +109,7 @@ export default function AdminMerchandisePage() {
       description: item.description,
       sizes: item.sizes || '',
       badge: item.badge || '',
+      stock: item.stock || 0,
     })
     setDialogOpen(true)
   }
@@ -117,6 +125,7 @@ export default function AdminMerchandisePage() {
       const payload = {
         ...form,
         price: Number(form.price),
+        stock: Number(form.stock),
         sizes: form.sizes || null,
         badge: form.badge || null,
       }
@@ -183,10 +192,30 @@ export default function AdminMerchandisePage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Merchandise</h1>
           <p className="text-gray-500 mt-1">Manage product catalog</p>
         </div>
-        <Button onClick={openCreate} className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Item
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => {
+            const headers = ['Name', 'Category', 'Price', 'Stock', 'Sold', 'Status']
+            const rows = items.map((item) => [
+              item.name,
+              item.category,
+              formatPriceForReport(item.price),
+              String(item.stock),
+              String(item.soldCount),
+              item.stock === 0 ? 'Out of Stock' : item.stock < 10 ? 'Low Stock' : 'In Stock',
+            ])
+            generateCSV(headers, rows, 'dapa-run-merchandise-report')
+            toast({ title: 'Report Generated', description: 'Merchandise report has been downloaded.' })
+          }} variant="outline" className="font-semibold">
+            <Download className="w-4 h-4 mr-2" />
+            Generate Report
+          </Button>
+          {isAdmin && (
+            <Button onClick={openCreate} className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Item
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Category Filter */}
@@ -220,6 +249,8 @@ export default function AdminMerchandisePage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Price</TableHead>
+                <TableHead>Stock</TableHead>
+                <TableHead>Sold</TableHead>
                 <TableHead>Sizes</TableHead>
                 <TableHead>Badge</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -228,14 +259,14 @@ export default function AdminMerchandisePage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-gray-400">
+                  <TableCell colSpan={8} className="text-center py-8 text-gray-400">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
                     Loading...
                   </TableCell>
                 </TableRow>
               ) : filteredItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-gray-400">No merchandise found in this category.</TableCell>
+                  <TableCell colSpan={8} className="text-center py-8 text-gray-400">No merchandise found in this category.</TableCell>
                 </TableRow>
               ) : (
                 filteredItems.map((item) => (
@@ -247,6 +278,25 @@ export default function AdminMerchandisePage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="font-semibold text-orange-600">₱{item.price.toLocaleString()}</TableCell>
+                    <TableCell>
+                      {item.stock === 0 ? (
+                        <Badge className="bg-red-500 text-white">Out of Stock</Badge>
+                      ) : item.stock < 10 ? (
+                        <div className="flex items-center gap-1">
+                          <Badge className="bg-orange-500 text-white flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" />
+                            Low Stock
+                          </Badge>
+                          <span className="text-xs text-gray-500">({item.stock})</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <Badge className="bg-emerald-500 text-white">In Stock</Badge>
+                          <span className="text-xs text-gray-500">({item.stock})</span>
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-600">{item.soldCount}</TableCell>
                     <TableCell className="text-sm text-gray-600">{item.sizes || '—'}</TableCell>
                     <TableCell>
                       {item.badge ? (
@@ -254,14 +304,18 @@ export default function AdminMerchandisePage() {
                       ) : '—'}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(item)}>
-                          <Pencil className="w-4 h-4 text-gray-500" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => openDelete(item)}>
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </Button>
-                      </div>
+                      {isAdmin ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(item)}>
+                            <Pencil className="w-4 h-4 text-gray-500" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => openDelete(item)}>
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">View only</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -287,6 +341,10 @@ export default function AdminMerchandisePage() {
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Stock Quantity</Label>
+                <Input type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })} placeholder="0" />
+              </div>
               <div className="space-y-2">
                 <Label>Category</Label>
                 <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>

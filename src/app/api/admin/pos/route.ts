@@ -155,6 +155,24 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    // Decrement stock and increment soldCount for each item
+    for (const item of items) {
+      try {
+        const merchItem = await db.merchItem.findUnique({ where: { id: item.itemId } })
+        if (merchItem) {
+          await db.merchItem.update({
+            where: { id: item.itemId },
+            data: {
+              stock: { decrement: item.quantity },
+              soldCount: { increment: item.quantity },
+            },
+          })
+        }
+      } catch (e) {
+        console.error('Failed to update stock for item:', item.itemId, e)
+      }
+    }
+
     return NextResponse.json(order, { status: 201 })
   } catch (error) {
     console.error("POS order create error:", error)

@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DAPA RUN - Run With Purpose",
+  title: "DAPA RUN - Dumaguete",
   description: "Philippines' premier running event organizer. From fun runs to ultra marathons, we create unforgettable race experiences that challenge and inspire runners of all levels.",
   keywords: ["DAPA RUN", "running events", "marathon", "fun run", "ultra marathon", "Philippines", "race organizer"],
   authors: [{ name: "DAPA RUN" }],
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     ],
   },
   openGraph: {
-    title: "DAPA RUN - Run With Purpose",
+    title: "DAPA RUN - Dumaguete",
     description: "Philippines' premier running event organizer",
     type: "website",
   },
@@ -40,6 +40,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              fetch('/api/settings')
+                .then(r => r.json())
+                .then(s => {
+                  if (s.siteTitle) document.title = s.siteTitle;
+                })
+                .catch(() => {});
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >

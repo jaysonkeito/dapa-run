@@ -15,16 +15,25 @@ export async function GET(req: NextRequest) {
 
     const where = eventId ? { eventId } : {}
 
-    const registrations = await db.registration.findMany({
-      where,
-      include: {
-        user: { select: { id: true, name: true, email: true, phone: true } },
-        event: { select: { id: true, title: true, date: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    })
+    const [registrations, onsiteRegistrations] = await Promise.all([
+      db.registration.findMany({
+        where,
+        include: {
+          user: { select: { id: true, name: true, email: true, phone: true } },
+          event: { select: { id: true, title: true, date: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      db.onSiteRegistration.findMany({
+        where: eventId ? { eventId } : {},
+        include: {
+          event: { select: { id: true, title: true, date: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+    ])
 
-    return NextResponse.json(registrations)
+    return NextResponse.json({ registrations, onsiteRegistrations })
   } catch (error) {
     console.error("Admin registrations fetch error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

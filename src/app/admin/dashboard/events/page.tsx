@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -38,9 +39,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Plus, Pencil, Trash2, Loader2, Eye } from 'lucide-react'
+import { Plus, Pencil, Trash2, Loader2, Eye, Download } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import ImageUpload from '@/components/ImageUpload'
+import { generateCSV, formatDateForReport, formatPriceForReport } from '@/lib/report-utils'
 
 interface Event {
   id: string
@@ -87,6 +89,8 @@ const emptyEvent = {
 export default function AdminEventsPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const { data: session } = useSession()
+  const isAdmin = (session?.user as Record<string, unknown>)?.role === 'admin'
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -94,6 +98,7 @@ export default function AdminEventsPage() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
   const [form, setForm] = useState(emptyEvent)
   const [saving, setSaving] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
   const fetchEvents = async () => {
     try {
@@ -185,17 +190,67 @@ export default function AdminEventsPage() {
     }
   }
 
+  const filteredEvents = statusFilter === 'all'
+    ? events
+    : events.filter((e) => e.status === statusFilter)
+
+  const handleGenerateReport = () => {
+    const headers = ['Title', 'Race Date', 'Location', 'Status', 'Base Price', 'Finisher Shirt Price', 'Singlet Price', 'Registration Close Date', 'Total Registrations']
+    const rows = events.map((e) => [
+      e.title,
+      e.date,
+      e.location,
+      e.status,
+      e.basePrice ? formatPriceForReport(e.basePrice) : 'N/A',
+      e.finisherShirtPrice ? formatPriceForReport(e.finisherShirtPrice) : 'N/A',
+      e.singletPrice ? formatPriceForReport(e.singletPrice) : 'N/A',
+      e.regCloseDate || '—',
+      String(e._count?.registrations ?? 0),
+    ])
+    generateCSV(headers, rows, 'dapa-run-events-report')
+    toast({ title: 'Report Generated', description: 'Events report has been downloaded.' })
+  }
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Events</h1>
-          <p className="text-gray-500 mt-1">Manage all running events</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Events</h1>
+            <p className="text-gray-500 mt-1">Manage all running events</p>
+          </div>
+          {/* Filter Tabs - between title and button */}
+          <div className="flex items-center gap-2 ml-2">
+            {['all', 'upcoming', 'past'].map((filter) => (
+              <button
+                key={filter}
+                onClick={() => setStatusFilter(filter)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  statusFilter === filter
+                    ? 'bg-orange-500 text-white shadow-md'
+                    : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                }`}
+              >
+                {filter.charAt(0).toUpperCase() + filter.slice(1)}
+                <span className="ml-1.5 text-xs opacity-75">
+                  ({filter === 'all' ? events.length : events.filter((e) => e.status === filter).length})
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
-        <Button onClick={openCreate} className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Event
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={handleGenerateReport} variant="outline" className="font-semibold">
+            <Download className="w-4 h-4 mr-2" />
+            Generate Report
+          </Button>
+          {isAdmin && (
+            <Button onClick={openCreate} className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Event
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-md border-0 overflow-hidden">
@@ -220,12 +275,12 @@ export default function AdminEventsPage() {
                     Loading events...
                   </TableCell>
                 </TableRow>
-              ) : events.length === 0 ? (
+              ) : filteredEvents.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-gray-400">No events found.</TableCell>
                 </TableRow>
               ) : (
-                events.map((event) => (
+                filteredEvents.map((event) => (
                   <TableRow key={event.id} className="cursor-pointer hover:bg-orange-50/50" onClick={() => router.push(`/admin/dashboard/events/${event.id}`)}>
                     <TableCell className="font-medium">
                       <div>
@@ -250,12 +305,16 @@ export default function AdminEventsPage() {
                         <Button variant="ghost" size="icon" onClick={() => router.push(`/admin/dashboard/events/${event.id}`)} title="View Details">
                           <Eye className="w-4 h-4 text-orange-500" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(event)}>
-                          <Pencil className="w-4 h-4 text-gray-500" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => openDelete(event)}>
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </Button>
+                        {isAdmin && (
+                          <>
+                            <Button variant="ghost" size="icon" onClick={() => openEdit(event)}>
+                              <Pencil className="w-4 h-4 text-gray-500" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => openDelete(event)}>
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -26,9 +27,10 @@ import {
   Search,
   Loader2,
   BarChart3,
+  Download,
 } from 'lucide-react'
-
-// Types
+import { useToast } from '@/hooks/use-toast'
+import { generateCSV, formatDateForReport, formatPriceForReport } from '@/lib/report-utils'
 interface Summary {
   totalRevenue: number
   totalTransactions: number
@@ -112,6 +114,8 @@ function formatDateTime(dateStr: string): string {
 }
 
 export default function POSAnalyticsPage() {
+  const { toast } = useToast()
+  const { data: session } = useSession()
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState('all')
@@ -165,21 +169,40 @@ export default function POSAnalyticsPage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">POS Analytics</h1>
           <p className="text-gray-500 mt-1">Track sales, best sellers, and revenue breakdown</p>
         </div>
-        {/* Period Filter */}
-        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-          {periodOptions.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => setPeriod(opt.value)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
-                period === opt.value
-                  ? 'bg-white text-orange-600 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-3">
+          {/* Period Filter */}
+          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+            {periodOptions.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setPeriod(opt.value)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                  period === opt.value
+                    ? 'bg-white text-orange-600 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <Button onClick={() => {
+            if (!data?.recentOrders) return
+            const headers = ['Order Number', 'Date', 'Customer', 'Payment Method', 'Total Amount', 'Items']
+            const rows = data.recentOrders.map((order) => [
+              order.orderNumber,
+              formatDateForReport(order.createdAt),
+              order.customerName,
+              order.paymentMethod,
+              formatPriceForReport(order.totalAmount),
+              order.items.map((item) => `${item.itemName}${item.size ? ` (${item.size})` : ''} x${item.quantity}`).join('; '),
+            ])
+            generateCSV(headers, rows, 'dapa-run-pos-sales-report')
+            toast({ title: 'Report Generated', description: 'POS sales report has been downloaded.' })
+          }} variant="outline" className="font-semibold">
+            <Download className="w-4 h-4 mr-2" />
+            Generate Report
+          </Button>
         </div>
       </div>
 

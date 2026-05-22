@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 import { useStore } from '@/store/useStore'
 import { merchandise as fallbackMerch, type MerchItem } from '@/lib/data'
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,7 @@ import {
   Filter,
   Eye,
   Loader2,
+  Zap,
 } from 'lucide-react'
 import {
   Dialog,
@@ -29,10 +31,13 @@ interface DbMerchItem {
   description: string
   sizes: string | null
   badge: string | null
+  stock: number
+  soldCount: number
 }
 
 export default function MerchandisePage() {
-  const { addToCart } = useStore()
+  const { addToCart, setAuthModalOpen, setAuthModalTab, setPendingCartItem, setPendingBuyNow, buyNow } = useStore()
+  const { data: session } = useSession()
   const { toast } = useToast()
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [selectedProduct, setSelectedProduct] = useState<DbMerchItem | null>(null)
@@ -41,6 +46,8 @@ export default function MerchandisePage() {
     ...m,
     sizes: m.sizes?.join(',') || null,
     badge: m.badge || null,
+    stock: 100,
+    soldCount: 0,
   })))
   const [loading, setLoading] = useState(true)
 
@@ -78,6 +85,22 @@ export default function MerchandisePage() {
   }
 
   const handleAddToCart = (item: DbMerchItem, size?: string) => {
+    if (!session?.user) {
+      // Not logged in - set pending item and show login modal
+      setPendingCartItem({
+        id: size ? `${item.id}-${size}` : item.id,
+        name: item.name,
+        price: item.price,
+        image: item.image,
+        size: size,
+        category: item.category,
+      })
+      setPendingBuyNow(false)
+      setAuthModalTab('login')
+      setAuthModalOpen(true)
+      return
+    }
+
     addToCart({
       id: size ? `${item.id}-${size}` : item.id,
       name: item.name,
@@ -89,6 +112,39 @@ export default function MerchandisePage() {
     toast({
       title: 'Added to Cart!',
       description: `${item.name}${size ? ` (${size})` : ''} has been added to your cart.`,
+    })
+    setSelectedProduct(null)
+    setSelectedSize('')
+  }
+
+  const handleBuyNow = (item: DbMerchItem, size?: string) => {
+    if (!session?.user) {
+      // Not logged in - set pending item with buyNow flag and show login modal
+      setPendingCartItem({
+        id: size ? `${item.id}-${size}` : item.id,
+        name: item.name,
+        price: item.price,
+        image: item.image,
+        size: size,
+        category: item.category,
+      })
+      setPendingBuyNow(true)
+      setAuthModalTab('login')
+      setAuthModalOpen(true)
+      return
+    }
+
+    buyNow({
+      id: size ? `${item.id}-${size}` : item.id,
+      name: item.name,
+      price: item.price,
+      image: item.image,
+      size: size,
+      category: item.category,
+    })
+    toast({
+      title: 'Buy Now!',
+      description: `${item.name}${size ? ` (${size})` : ''} added. Redirecting to cart...`,
     })
     setSelectedProduct(null)
     setSelectedSize('')
@@ -154,6 +210,7 @@ export default function MerchandisePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredItems.map((item, i) => {
                 const sizes = getSizes(item)
+                const isOutOfStock = item.stock === 0
                 return (
                   <motion.div
                     key={item.id}
@@ -171,6 +228,11 @@ export default function MerchandisePage() {
                         {item.badge && (
                           <Badge className="absolute top-3 left-3 bg-orange-500 text-white font-bold text-xs">
                             {item.badge}
+                          </Badge>
+                        )}
+                        {isOutOfStock && (
+                          <Badge className="absolute top-3 right-3 bg-red-500 text-white font-bold text-xs">
+                            Out of Stock
                           </Badge>
                         )}
                         <button
@@ -192,26 +254,51 @@ export default function MerchandisePage() {
                             {item.name}
                           </h3>
                           <p className="text-gray-500 text-sm line-clamp-2 mb-3">{item.description}</p>
+                          {item.soldCount > 0 && (
+                            <p className="text-xs text-gray-400 mb-2">{item.soldCount} sold</p>
+                          )}
                         </div>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-2">
                           <span className="text-lg font-bold text-orange-600">
                             ₱{item.price.toLocaleString()}
                           </span>
-                          <Button
-                            onClick={() => {
-                              if (sizes.length > 0) {
-                                setSelectedProduct(item)
-                                setSelectedSize(sizes[0])
-                              } else {
-                                handleAddToCart(item)
-                              }
-                            }}
-                            size="sm"
-                            className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold shadow-md"
-                          >
-                            <ShoppingCart className="w-4 h-4 mr-1" />
-                            Add
-                          </Button>
+                          {isOutOfStock ? (
+                            <Badge className="bg-red-100 text-red-600 border-red-200">Out of Stock</Badge>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <Button
+                                onClick={() => {
+                                  if (sizes.length > 0) {
+                                    setSelectedProduct(item)
+                                    setSelectedSize(sizes[0])
+                                  } else {
+                                    handleAddToCart(item)
+                                  }
+                                }}
+                                size="sm"
+                                className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold shadow-md"
+                              >
+                                <ShoppingCart className="w-4 h-4 mr-1" />
+                                Add
+                              </Button>
+                              <Button
+                                onClick={() => {
+                                  if (sizes.length > 0) {
+                                    setSelectedProduct(item)
+                                    setSelectedSize(sizes[0])
+                                  } else {
+                                    handleBuyNow(item)
+                                  }
+                                }}
+                                size="sm"
+                                variant="outline"
+                                className="border-orange-500 text-orange-600 hover:bg-orange-50 font-semibold"
+                              >
+                                <Zap className="w-4 h-4 mr-1" />
+                                Buy
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -248,6 +335,9 @@ export default function MerchandisePage() {
                   <p className="text-2xl font-bold text-orange-600 mt-1">
                     ₱{selectedProduct.price.toLocaleString()}
                   </p>
+                  {selectedProduct.soldCount > 0 && (
+                    <p className="text-sm text-gray-400 mt-1">{selectedProduct.soldCount} sold</p>
+                  )}
                 </div>
                 <p className="text-gray-500 text-sm leading-relaxed">{selectedProduct.description}</p>
 
@@ -272,13 +362,27 @@ export default function MerchandisePage() {
                   </div>
                 )}
 
-                <Button
-                  onClick={() => handleAddToCart(selectedProduct, selectedSize)}
-                  className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold shadow-lg"
-                >
-                  <ShoppingCart className="w-5 h-5 mr-2" />
-                  Add to Cart — ₱{selectedProduct.price.toLocaleString()}
-                </Button>
+                {selectedProduct.stock === 0 ? (
+                  <Badge className="w-full justify-center bg-red-100 text-red-600 py-3 text-base">Out of Stock</Badge>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => handleAddToCart(selectedProduct, selectedSize)}
+                      className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold shadow-lg"
+                    >
+                      <ShoppingCart className="w-5 h-5 mr-2" />
+                      Add to Cart
+                    </Button>
+                    <Button
+                      onClick={() => handleBuyNow(selectedProduct, selectedSize)}
+                      variant="outline"
+                      className="flex-1 border-orange-500 text-orange-600 hover:bg-orange-50 font-bold"
+                    >
+                      <Zap className="w-5 h-5 mr-2" />
+                      Buy Now
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           )}

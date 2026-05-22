@@ -48,6 +48,7 @@ export default function AdminDashboardLayout({
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [siteSettings, setSiteSettings] = useState({ siteTagline: 'Dumaguete', siteTitle: 'DAPA RUN - Dumaguete' })
 
   const userRole = (session?.user as Record<string, unknown>)?.role as string | undefined
 
@@ -58,6 +59,19 @@ export default function AdminDashboardLayout({
 
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then((r) => r.json())
+      .then((data) => {
+        setSiteSettings((prev) => ({
+          ...prev,
+          siteTagline: data.siteTagline || data.site_tagline || prev.siteTagline,
+          siteTitle: data.siteTitle || data.site_title || prev.siteTitle,
+        }))
+      })
+      .catch(() => { /* use default */ })
   }, [])
 
   useEffect(() => {
@@ -94,7 +108,7 @@ export default function AdminDashboardLayout({
           </div>
           <div>
             <h1 className="text-white font-bold text-lg">DAPA RUN</h1>
-            <p className="text-gray-400 text-xs capitalize">{userRole} Panel</p>
+            <p className="text-gray-400 text-xs">{siteSettings.siteTagline}</p>
           </div>
         </div>
         <nav className="flex-1 py-4 space-y-1 px-3">
@@ -141,7 +155,7 @@ export default function AdminDashboardLayout({
                 </div>
                 <div>
                   <h1 className="text-white font-bold text-lg">DAPA RUN</h1>
-                  <p className="text-gray-400 text-xs capitalize">{userRole} Panel</p>
+                  <p className="text-gray-400 text-xs">{siteSettings.siteTagline}</p>
                 </div>
               </div>
               <button onClick={() => setSidebarOpen(false)} className="text-gray-400 hover:text-white">
@@ -186,7 +200,9 @@ export default function AdminDashboardLayout({
                 <Menu className="w-6 h-6" />
               </button>
               <div className="flex items-center gap-2 text-sm text-gray-500">
-                <button onClick={() => router.push('/admin/dashboard')} className="hover:text-orange-500 capitalize">{userRole}</button>
+                <span className="text-xs text-orange-500 font-medium hidden sm:inline">{siteSettings.siteTagline}</span>
+                <span className="text-gray-300 hidden sm:inline">·</span>
+                <button onClick={() => router.push('/admin/dashboard')} className="hover:text-orange-500 capitalize">{userRole} Panel</button>
                 {pathname !== '/admin/dashboard' && (
                   <>
                     <ChevronRight className="w-4 h-4" />

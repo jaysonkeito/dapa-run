@@ -36,6 +36,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
+import { useSession } from 'next-auth/react'
 import { useToast } from '@/hooks/use-toast'
 
 interface RaceResult {
@@ -63,6 +64,8 @@ interface Finisher {
 
 export default function AdminResultsPage() {
   const { toast } = useToast()
+  const { data: session } = useSession()
+  const isAdmin = (session?.user as Record<string, unknown>)?.role === 'admin'
   const [results, setResults] = useState<RaceResult[]>([])
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
@@ -206,10 +209,12 @@ export default function AdminResultsPage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Race Results</h1>
           <p className="text-gray-500 mt-1">Manage race results for past events</p>
         </div>
-        <Button onClick={openCreate} className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Result
-        </Button>
+        {isAdmin && (
+          <Button onClick={openCreate} className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Result
+          </Button>
+        )}
       </div>
 
       <div className="bg-white rounded-xl shadow-md border-0 overflow-hidden">
@@ -246,14 +251,18 @@ export default function AdminResultsPage() {
                     </TableCell>
                     <TableCell className="text-sm text-gray-600">{getFinisherCount(result.finishers)} finishers</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(result)}>
-                          <Pencil className="w-4 h-4 text-gray-500" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => openDelete(result)}>
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </Button>
-                      </div>
+                      {isAdmin ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(result)}>
+                            <Pencil className="w-4 h-4 text-gray-500" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => openDelete(result)}>
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">View only</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

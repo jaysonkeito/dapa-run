@@ -17,6 +17,7 @@ export async function PUT(
     const body = await req.json()
 
     if (body.price !== undefined) body.price = Number(body.price)
+    if (body.stock !== undefined) body.stock = Number(body.stock)
 
     const item = await db.merchItem.update({
       where: { id },

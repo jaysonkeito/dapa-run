@@ -34,6 +34,11 @@ interface StoreState {
   setAuthModalOpen: (open: boolean) => void
   authModalTab: 'login' | 'register'
   setAuthModalTab: (tab: 'login' | 'register') => void
+  pendingCartItem: Omit<CartItem, 'quantity'> | null
+  setPendingCartItem: (item: Omit<CartItem, 'quantity'> | null) => void
+  pendingBuyNow: boolean
+  setPendingBuyNow: (buyNow: boolean) => void
+  buyNow: (item: Omit<CartItem, 'quantity'>) => void
 }
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -81,4 +86,25 @@ export const useStore = create<StoreState>((set, get) => ({
   setAuthModalOpen: (open) => set({ authModalOpen: open }),
   authModalTab: 'login',
   setAuthModalTab: (tab) => set({ authModalTab: tab }),
+  pendingCartItem: null,
+  setPendingCartItem: (item) => set({ pendingCartItem: item }),
+  pendingBuyNow: false,
+  setPendingBuyNow: (buyNow) => set({ pendingBuyNow: buyNow }),
+  buyNow: (item) => {
+    const { cart } = get()
+    const existing = cart.find((c) => c.id === item.id && c.size === item.size)
+    if (existing) {
+      set({
+        cart: cart.map((c) =>
+          c.id === item.id && c.size === item.size
+            ? { ...c, quantity: c.quantity + 1 }
+            : c
+        ),
+        currentPage: 'cart',
+        mobileMenuOpen: false,
+      })
+    } else {
+      set({ cart: [...cart, { ...item, quantity: 1 }], currentPage: 'cart', mobileMenuOpen: false })
+    }
+  },
 }))

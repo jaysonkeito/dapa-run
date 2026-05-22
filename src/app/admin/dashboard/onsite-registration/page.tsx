@@ -41,8 +41,10 @@ import {
   Printer,
   CheckCircle2,
   ClipboardList,
+  Download,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { generateCSV, formatDateForReport, formatPriceForReport } from '@/lib/report-utils'
 
 interface Event {
   id: string
@@ -317,6 +319,25 @@ export default function OnSiteRegistrationPage() {
         printWindow.print()
       }
     }
+  }
+
+  const handleGenerateReport = () => {
+    const headers = ['Participant Name', 'Email', 'Phone', 'Event', 'Distance', 'Finisher Shirt', 'Singlet', 'Payment Method', 'Amount Paid', 'Staff', 'Date']
+    const rows = registrations.map((reg) => [
+      reg.participantName,
+      reg.participantEmail || '—',
+      reg.participantPhone || '—',
+      reg.event?.title || 'Unknown',
+      reg.distance,
+      reg.finisherShirtSize || '—',
+      reg.singletSize || '—',
+      reg.paymentMethod,
+      formatPriceForReport(reg.amountPaid),
+      reg.staffName || '—',
+      formatDateForReport(reg.createdAt),
+    ])
+    generateCSV(headers, rows, 'dapa-run-onsite-registrations-report')
+    toast({ title: 'Report Generated', description: 'On-site registrations report has been downloaded.' })
   }
 
   // Filter registrations by search
@@ -617,14 +638,20 @@ export default function OnSiteRegistrationPage() {
                 </CardDescription>
               </div>
             </div>
-            <div className="relative w-full sm:w-72">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                placeholder="Search by participant name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
+            <div className="flex items-center gap-3">
+              <Button onClick={handleGenerateReport} variant="outline" size="sm" className="font-semibold">
+                <Download className="w-4 h-4 mr-2" />
+                Generate Report
+              </Button>
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  placeholder="Search by participant name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
             </div>
           </div>
         </CardHeader>

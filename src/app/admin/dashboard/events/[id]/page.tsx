@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { ArrowLeft, Calendar, MapPin, Clock, DollarSign, Users, UserPlus, Loader2, Shirt } from 'lucide-react'
+import { ArrowLeft, Calendar, MapPin, Clock, DollarSign, Users, UserPlus, Loader2, Shirt, Trophy } from 'lucide-react'
 import CountdownTimer from '@/components/CountdownTimer'
 
 interface Registration {
@@ -40,6 +40,12 @@ interface OnsiteReg {
   createdAt: string
 }
 
+interface RaceResult {
+  id: string
+  distance: string
+  finishers: string
+}
+
 interface EventDetail {
   id: string
   title: string
@@ -61,7 +67,10 @@ interface EventDetail {
   singletSizes: string | null
   registrations: Registration[]
   onsiteRegistrations: OnsiteReg[]
+  results: RaceResult[]
 }
+
+type RegTab = 'all' | 'online' | 'onsite'
 
 function formatPrice(amount: number): string {
   return `₱${amount.toLocaleString()}`
@@ -79,6 +88,7 @@ export default function EventDetailPage() {
 
   const [event, setEvent] = useState<EventDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [regTab, setRegTab] = useState<RegTab>('all')
 
   useEffect(() => {
     async function fetchEvent() {
@@ -132,6 +142,23 @@ export default function EventDetailPage() {
     onsiteDistanceGroups[reg.distance].push(reg)
   })
 
+  // Combine all registrations for "All" tab
+  const allDistanceGroups: Record<string, { type: string; data: Registration | OnsiteReg }[]> = {}
+  // Add online registrations
+  Object.entries(distanceGroups).forEach(([distance, regs]) => {
+    if (!allDistanceGroups[distance]) allDistanceGroups[distance] = []
+    regs.forEach((reg) => {
+      allDistanceGroups[distance].push({ type: 'online', data: reg })
+    })
+  })
+  // Add onsite registrations
+  Object.entries(onsiteDistanceGroups).forEach(([distance, regs]) => {
+    if (!allDistanceGroups[distance]) allDistanceGroups[distance] = []
+    regs.forEach((reg) => {
+      allDistanceGroups[distance].push({ type: 'onsite', data: reg })
+    })
+  })
+
   const regCloseDateTime = event.regCloseDate
     ? `${event.regCloseDate} ${event.regCloseTime || '11:59 PM'}`
     : ''
@@ -141,6 +168,31 @@ export default function EventDetailPage() {
   const totalRegs = totalOnlineRegs + totalOnsiteRegs
   const totalRevenue = event.registrations.reduce((sum, r) => sum + (r.totalAmount || 0), 0) +
     event.onsiteRegistrations.reduce((sum, r) => sum + (r.amountPaid || 0), 0)
+
+  const isPast = event.status === 'past'
+
+  // Parse race results for past events
+  interface Finisher {
+    rank: number
+    bib: string
+    name: string
+    time: string
+    gender: string
+  }
+
+  const parsedResults: Record<string, Finisher[]> = {}
+  if (isPast && event.results) {
+    event.results.forEach((result) => {
+      try {
+        const finishers = JSON.parse(result.finishers)
+        if (Array.isArray(finishers) && finishers.length > 0) {
+          parsedResults[result.distance] = finishers
+        }
+      } catch {
+        // ignore parse errors
+      }
+    })
+  }
 
   return (
     <div className="space-y-6">
@@ -231,7 +283,7 @@ export default function EventDetailPage() {
         </Card>
       </div>
 
-      {/* Countdown Timer (if upcoming and reg close date is set) */}
+      {/* Countdown Timer */}
       {event.status === 'upcoming' && regCloseDateTime && (
         <Card className="border-0 shadow-md bg-gradient-to-r from-orange-50 to-red-50">
           <CardContent className="p-6">
@@ -303,60 +355,263 @@ export default function EventDetailPage() {
         </Card>
       </div>
 
-      {/* Online Registrations */}
+      {/* Registrations Card with Toggle */}
       <Card className="border-0 shadow-md">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <CardTitle className="text-lg font-bold flex items-center gap-2">
               <Users className="w-5 h-5 text-orange-500" />
-              Online Registrations ({totalOnlineRegs})
+              Registrations ({totalOnlineRegs} online, {totalOnsiteRegs} on-site)
             </CardTitle>
+            {/* Toggle Tabs */}
+            <div className="flex items-center gap-2">
+              {(['all', 'online', 'onsite'] as RegTab[]).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setRegTab(tab)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    regTab === tab
+                      ? 'bg-orange-500 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {tab === 'all' ? `All (${totalRegs})` : tab === 'online' ? `Online (${totalOnlineRegs})` : `On-site (${totalOnsiteRegs})`}
+                </button>
+              ))}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          {totalOnlineRegs === 0 ? (
-            <p className="text-gray-400 text-sm text-center py-6">No online registrations yet.</p>
+          {totalRegs === 0 ? (
+            <p className="text-gray-400 text-sm text-center py-6">No registrations yet.</p>
+          ) : regTab === 'onsite' ? (
+            // On-site Only
+            event.onsiteRegistrations.length === 0 ? (
+              <p className="text-gray-400 text-sm text-center py-6">No on-site registrations.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Participant</TableHead>
+                      <TableHead>Distance</TableHead>
+                      <TableHead>Finisher Shirt</TableHead>
+                      <TableHead>Singlet</TableHead>
+                      <TableHead>Payment</TableHead>
+                      <TableHead>Amount Paid</TableHead>
+                      <TableHead>Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {event.onsiteRegistrations.map((reg) => (
+                      <TableRow key={reg.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{reg.participantName}</p>
+                            {reg.participantEmail && <p className="text-xs text-gray-400">{reg.participantEmail}</p>}
+                          </div>
+                        </TableCell>
+                        <TableCell><Badge className="bg-orange-500 text-white text-xs">{reg.distance}</Badge></TableCell>
+                        <TableCell>
+                          {reg.finisherShirtSize ? (
+                            <Badge className="bg-purple-100 text-purple-700 text-xs"><Shirt className="w-3 h-3 mr-1" />{reg.finisherShirtSize}</Badge>
+                          ) : (
+                            <span className="text-gray-300 text-sm">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {reg.singletSize ? (
+                            <Badge className="bg-emerald-100 text-emerald-700 text-xs"><Shirt className="w-3 h-3 mr-1" />{reg.singletSize}</Badge>
+                          ) : (
+                            <span className="text-gray-300 text-sm">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs text-gray-500 capitalize">{reg.paymentMethod}</TableCell>
+                        <TableCell className="font-semibold text-orange-600">{formatPrice(reg.amountPaid)}</TableCell>
+                        <TableCell className="text-xs text-gray-400">{new Date(reg.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )
+          ) : regTab === 'online' ? (
+            // Online Only - grouped by distance
+            event.registrations.length === 0 ? (
+              <p className="text-gray-400 text-sm text-center py-6">No online registrations.</p>
+            ) : (
+              <div className="space-y-4">
+                {Object.entries(distanceGroups).map(([distance, regs]) => (
+                  <div key={distance}>
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                      <Badge className="bg-orange-500 text-white">{distance}</Badge>
+                      <span className="text-gray-400">({regs.length} runner{regs.length !== 1 ? 's' : ''})</span>
+                    </h4>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Finisher Shirt</TableHead>
+                            <TableHead>Singlet</TableHead>
+                            <TableHead>Total Paid</TableHead>
+                            <TableHead>Registered</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {regs.map((reg) => (
+                            <TableRow key={reg.id}>
+                              <TableCell className="font-medium">{reg.user.name}</TableCell>
+                              <TableCell className="text-sm text-gray-500">{reg.user.email}</TableCell>
+                              <TableCell>
+                                {reg.finisherShirtSize ? (
+                                  <Badge className="bg-purple-100 text-purple-700 text-xs"><Shirt className="w-3 h-3 mr-1" />{reg.finisherShirtSize}</Badge>
+                                ) : (
+                                  <span className="text-gray-300 text-sm">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {reg.singletSize ? (
+                                  <Badge className="bg-emerald-100 text-emerald-700 text-xs"><Shirt className="w-3 h-3 mr-1" />{reg.singletSize}</Badge>
+                                ) : (
+                                  <span className="text-gray-300 text-sm">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="font-semibold text-orange-600">{reg.totalAmount ? formatPrice(reg.totalAmount) : '-'}</TableCell>
+                              <TableCell className="text-xs text-gray-400">{new Date(reg.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
           ) : (
-            <div className="space-y-4">
-              {Object.entries(distanceGroups).map(([distance, regs]) => (
+            // All - show combined by distance
+            Object.keys(allDistanceGroups).length === 0 ? (
+              <p className="text-gray-400 text-sm text-center py-6">No registrations yet.</p>
+            ) : (
+              <div className="space-y-4">
+                {Object.entries(allDistanceGroups).map(([distance, entries]) => (
+                  <div key={distance}>
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                      <Badge className="bg-orange-500 text-white">{distance}</Badge>
+                      <span className="text-gray-400">({entries.length} registration{entries.length !== 1 ? 's' : ''})</span>
+                    </h4>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Finisher Shirt</TableHead>
+                            <TableHead>Singlet</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Date</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {entries.map((entry, idx) => {
+                            const isOnline = entry.type === 'online'
+                            const reg = entry.data
+                            return (
+                              <TableRow key={`${entry.type}-${idx}`}>
+                                <TableCell>
+                                  <Badge className={isOnline ? 'bg-blue-100 text-blue-700 text-xs' : 'bg-emerald-100 text-emerald-700 text-xs'}>
+                                    {isOnline ? 'Online' : 'On-site'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="font-medium">
+                                  {isOnline ? (entry.data as Registration).user.name : (entry.data as OnsiteReg).participantName}
+                                </TableCell>
+                                <TableCell className="text-sm text-gray-500">
+                                  {isOnline ? (entry.data as Registration).user.email : ((entry.data as OnsiteReg).participantEmail || '—')}
+                                </TableCell>
+                                <TableCell>
+                                  {reg.finisherShirtSize ? (
+                                    <Badge className="bg-purple-100 text-purple-700 text-xs"><Shirt className="w-3 h-3 mr-1" />{reg.finisherShirtSize}</Badge>
+                                  ) : (
+                                    <span className="text-gray-300 text-sm">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {reg.singletSize ? (
+                                    <Badge className="bg-emerald-100 text-emerald-700 text-xs"><Shirt className="w-3 h-3 mr-1" />{reg.singletSize}</Badge>
+                                  ) : (
+                                    <span className="text-gray-300 text-sm">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="font-semibold text-orange-600">
+                                  {isOnline ? formatPrice((entry.data as Registration).totalAmount || 0) : formatPrice((entry.data as OnsiteReg).amountPaid || 0)}
+                                </TableCell>
+                                <TableCell className="text-xs text-gray-400">
+                                  {new Date(reg.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </TableCell>
+                              </TableRow>
+                            )
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Race Results for Past Events */}
+      {isPast && Object.keys(parsedResults).length > 0 && (
+        <Card className="border-0 shadow-md">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-bold flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-yellow-500" />
+              Race Results
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {Object.entries(parsedResults).map(([distance, finishers]) => (
                 <div key={distance}>
-                  <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                     <Badge className="bg-orange-500 text-white">{distance}</Badge>
-                    <span className="text-gray-400">({regs.length} runner{regs.length !== 1 ? 's' : ''})</span>
+                    <span className="text-gray-400">({finishers.length} finisher{finishers.length !== 1 ? 's' : ''})</span>
                   </h4>
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead>Rank</TableHead>
+                          <TableHead>Bib #</TableHead>
                           <TableHead>Name</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Finisher Shirt</TableHead>
-                          <TableHead>Singlet</TableHead>
-                          <TableHead>Total Paid</TableHead>
-                          <TableHead>Registered</TableHead>
+                          <TableHead>Time</TableHead>
+                          <TableHead>Gender</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {regs.map((reg) => (
-                          <TableRow key={reg.id}>
-                            <TableCell className="font-medium">{reg.user.name}</TableCell>
-                            <TableCell className="text-sm text-gray-500">{reg.user.email}</TableCell>
+                        {finishers.map((f: Finisher, idx: number) => (
+                          <TableRow key={idx}>
                             <TableCell>
-                              {reg.finisherShirtSize ? (
-                                <Badge className="bg-purple-100 text-purple-700 text-xs"><Shirt className="w-3 h-3 mr-1" />{reg.finisherShirtSize}</Badge>
-                              ) : (
-                                <span className="text-gray-300 text-sm">-</span>
-                              )}
+                              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                                f.rank === 1 ? 'bg-yellow-100 text-yellow-700' :
+                                f.rank === 2 ? 'bg-gray-100 text-gray-600' :
+                                f.rank === 3 ? 'bg-orange-100 text-orange-700' :
+                                'bg-gray-50 text-gray-400'
+                              }`}>
+                                {f.rank}
+                              </div>
                             </TableCell>
+                            <TableCell className="text-sm text-gray-600">{f.bib || '—'}</TableCell>
+                            <TableCell className="font-medium text-gray-900">{f.name}</TableCell>
+                            <TableCell className="text-sm text-gray-600 font-mono">{f.time}</TableCell>
                             <TableCell>
-                              {reg.singletSize ? (
-                                <Badge className="bg-emerald-100 text-emerald-700 text-xs"><Shirt className="w-3 h-3 mr-1" />{reg.singletSize}</Badge>
-                              ) : (
-                                <span className="text-gray-300 text-sm">-</span>
-                              )}
+                              <Badge variant="outline" className="text-xs capitalize">{f.gender || '—'}</Badge>
                             </TableCell>
-                            <TableCell className="font-semibold text-orange-600">{reg.totalAmount ? formatPrice(reg.totalAmount) : '-'}</TableCell>
-                            <TableCell className="text-xs text-gray-400">{new Date(reg.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -365,70 +620,9 @@ export default function EventDetailPage() {
                 </div>
               ))}
             </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* On-site Registrations */}
-      <Card className="border-0 shadow-md">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-bold flex items-center gap-2">
-            <UserPlus className="w-5 h-5 text-orange-500" />
-            On-site Registrations ({totalOnsiteRegs})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {totalOnsiteRegs === 0 ? (
-            <p className="text-gray-400 text-sm text-center py-6">No on-site registrations yet.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Participant</TableHead>
-                    <TableHead>Distance</TableHead>
-                    <TableHead>Finisher Shirt</TableHead>
-                    <TableHead>Singlet</TableHead>
-                    <TableHead>Payment</TableHead>
-                    <TableHead>Amount Paid</TableHead>
-                    <TableHead>Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {event.onsiteRegistrations.map((reg) => (
-                    <TableRow key={reg.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{reg.participantName}</p>
-                          {reg.participantEmail && <p className="text-xs text-gray-400">{reg.participantEmail}</p>}
-                        </div>
-                      </TableCell>
-                      <TableCell><Badge className="bg-orange-500 text-white text-xs">{reg.distance}</Badge></TableCell>
-                      <TableCell>
-                        {reg.finisherShirtSize ? (
-                          <Badge className="bg-purple-100 text-purple-700 text-xs"><Shirt className="w-3 h-3 mr-1" />{reg.finisherShirtSize}</Badge>
-                        ) : (
-                          <span className="text-gray-300 text-sm">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {reg.singletSize ? (
-                          <Badge className="bg-emerald-100 text-emerald-700 text-xs"><Shirt className="w-3 h-3 mr-1" />{reg.singletSize}</Badge>
-                        ) : (
-                          <span className="text-gray-300 text-sm">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs text-gray-500 capitalize">{reg.paymentMethod}</TableCell>
-                      <TableCell className="font-semibold text-orange-600">{formatPrice(reg.amountPaid)}</TableCell>
-                      <TableCell className="text-xs text-gray-400">{new Date(reg.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

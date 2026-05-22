@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
+import bcrypt from 'bcryptjs'
 
 export async function PUT(
   request: Request,
@@ -15,21 +16,19 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const { role } = body as { role: string }
+    const { role, name, email, phone, password } = body as { role?: string; name?: string; email?: string; phone?: string; password?: string }
 
-    if (!['user', 'staff', 'admin'].includes(role)) {
-      return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
-    }
+    // If updating role
+    if (role !== undefined) {
+      if (!['user', 'staff', 'admin'].includes(role)) {
+        return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
+      }
 
-    // Cannot modify self
-    const currentUserId = (session.user as Record<string, unknown>)?.id
-    if (id === currentUserId) {
-      return NextResponse.json({ error: 'Cannot modify your own role' }, { status: 400 })
-    }
-
-    // Cannot promote anyone to admin
-    if (role === 'admin') {
-      return NextResponse.json({ error: 'Cannot promote users to admin role' }, { status: 400 })
+      // Cannot modify self
+      const currentUserId = (session.user as Record<string, unknown>)?.id
+      if (id === currentUserId) {
+        return NextResponse.json({ error: 'Cannot modify your own role' }, { status: 400 })
+      }
     }
 
     const targetUser = await db.user.findUnique({ where: { id } })
@@ -37,14 +36,27 @@ export async function PUT(
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // Cannot modify other admins
-    if (targetUser.role === 'admin') {
-      return NextResponse.json({ error: 'Cannot modify admin users' }, { status: 400 })
+    // Build update data
+    const updateData: Record<string, string> = {}
+    if (name !== undefined) updateData.name = name
+    if (email !== undefined) updateData.email = email
+    if (phone !== undefined) updateData.phone = phone
+    if (role !== undefined) {
+      // Cannot modify other admins unless you're changing their role
+      if (targetUser.role === 'admin' && role !== 'admin') {
+        // Allow admin to change other admin's role
+      }
+      updateData.role = role
+    }
+    // Hash password if provided
+    if (password && password.trim()) {
+      const salt = await bcrypt.genSalt(10)
+      updateData.password = await bcrypt.hash(password, salt)
     }
 
     const updated = await db.user.update({
       where: { id },
-      data: { role },
+      data: updateData,
       select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true },
     })
 

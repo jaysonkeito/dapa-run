@@ -32,9 +32,23 @@ export default function Header() {
   const count = cartCount()
   const [scrolled, setScrolled] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [siteSettings, setSiteSettings] = useState({ siteTagline: 'Dumaguete', siteTitle: 'DAPA RUN - Dumaguete' })
 
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then((r) => r.json())
+      .then((data) => {
+        setSiteSettings((prev) => ({
+          ...prev,
+          siteTagline: data.siteTagline || data.site_tagline || prev.siteTagline,
+          siteTitle: data.siteTitle || data.site_title || prev.siteTitle,
+        }))
+      })
+      .catch(() => { /* use default */ })
   }, [])
 
   useEffect(() => {
@@ -77,7 +91,7 @@ export default function Header() {
                     DAPA RUN
                   </span>
                   <span className="text-[10px] sm:text-xs text-gray-400 font-medium tracking-widest uppercase -mt-1">
-                    Run With Purpose
+                    {siteSettings.siteTagline}
                   </span>
                 </div>
               </button>
@@ -166,7 +180,7 @@ export default function Header() {
                           </div>
                           <div>
                             <h2 className="text-white font-bold text-lg">DAPA RUN</h2>
-                            <p className="text-white/70 text-xs">Run With Purpose</p>
+                            <p className="text-white/70 text-xs">{siteSettings.siteTagline}</p>
                           </div>
                         </div>
                       </div>

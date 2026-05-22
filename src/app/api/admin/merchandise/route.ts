@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { name, price, image, category, description, sizes, badge } = body
+    const { name, price, image, category, description, sizes, badge, stock } = body
 
     if (!name || price === undefined || !category) {
       return NextResponse.json({ error: "Name, price, and category are required" }, { status: 400 })
@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
         description: description || "",
         sizes: sizes || null,
         badge: badge || null,
+        stock: stock !== undefined ? Number(stock) : 0,
       },
     })
 

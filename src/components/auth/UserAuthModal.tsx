@@ -16,7 +16,7 @@ import { X, Mail, Lock, User, Phone, Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
 export default function UserAuthModal() {
-  const { authModalOpen, setAuthModalOpen, authModalTab, setAuthModalTab } = useStore()
+  const { authModalOpen, setAuthModalOpen, authModalTab, setAuthModalTab, pendingCartItem, setPendingCartItem, pendingBuyNow, setPendingBuyNow, addToCart, buyNow } = useStore()
   const { toast } = useToast()
 
   // Login state
@@ -73,14 +73,25 @@ export default function UserAuthModal() {
             title: userRole === 'admin' ? 'Welcome, Admin!' : 'Welcome, Staff!',
             description: 'Redirecting to the Dashboard...',
           })
-          // Use window.location for a full page navigation to the admin dashboard
-          // This ensures we leave the SPA context entirely
           window.location.href = '/admin/dashboard'
         } else {
-          toast({
-            title: 'Welcome back!',
-            description: 'You have successfully logged in.',
-          })
+          // Check if there's a pending cart item (user tried to add to cart before logging in)
+          if (pendingCartItem) {
+            if (pendingBuyNow) {
+              buyNow(pendingCartItem)
+              toast({ title: 'Welcome back!', description: 'Item added to cart. Redirecting to cart...' })
+            } else {
+              addToCart(pendingCartItem)
+              toast({ title: 'Welcome back!', description: 'Item added to your cart!' })
+            }
+            setPendingCartItem(null)
+            setPendingBuyNow(false)
+          } else {
+            toast({
+              title: 'Welcome back!',
+              description: 'You have successfully logged in.',
+            })
+          }
         }
       }
     } catch {

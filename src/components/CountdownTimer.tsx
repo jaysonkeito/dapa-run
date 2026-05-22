@@ -56,9 +56,9 @@ export default function CountdownTimer({ targetDate, label = 'Registration Close
   const [ended, setEnded] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
     if (!target) {
       setEnded(true)
+      setMounted(true)
       return
     }
 
@@ -69,6 +69,7 @@ export default function CountdownTimer({ targetDate, label = 'Registration Close
     }
 
     tick()
+    setMounted(true)
     const interval = setInterval(tick, 1000)
     return () => clearInterval(interval)
   }, [target])

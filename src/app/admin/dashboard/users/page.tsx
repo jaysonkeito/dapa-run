@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -35,8 +36,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Plus, Trash2, Loader2, UserPlus, Shield } from 'lucide-react'
+import { Plus, Trash2, Loader2, UserPlus, Shield, Pencil, Download } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { generateCSV, formatDateForReport } from '@/lib/report-utils'
 
 interface UserData {
   id: string
@@ -50,6 +52,9 @@ interface UserData {
 
 export default function AdminUsersPage() {
   const { toast } = useToast()
+  const { data: session } = useSession()
+  const isAdmin = (session?.user as Record<string, unknown>)?.role === 'admin'
+  const currentUserId = (session?.user as Record<string, unknown>)?.id as string | undefined
   const [users, setUsers] = useState<UserData[]>([])
   const [loading, setLoading] = useState(true)
   const [roleFilter, setRoleFilter] = useState<string>('all')
@@ -58,6 +63,9 @@ export default function AdminUsersPage() {
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null)
   const [addForm, setAddForm] = useState({ name: '', email: '', password: '' })
   const [saving, setSaving] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', role: 'user', password: '' })
+  const [editSaving, setEditSaving] = useState(false)
 
   const fetchUsers = async () => {
     try {
@@ -118,6 +126,49 @@ export default function AdminUsersPage() {
     }
   }
 
+  const openEditUser = (user: UserData) => {
+    setSelectedUser(user)
+    setEditForm({ name: user.name, email: user.email, phone: user.phone || '', role: user.role, password: '' })
+    setEditDialogOpen(true)
+  }
+
+  const handleEditUser = async () => {
+    if (!selectedUser) return
+    setEditSaving(true)
+    try {
+      const payload: Record<string, string> = {
+        name: editForm.name,
+        email: editForm.email,
+        phone: editForm.phone,
+      }
+      // Don't allow changing own role
+      if (selectedUser.id !== currentUserId) {
+        payload.role = editForm.role
+      }
+      // Include password only if provided
+      if (editForm.password.trim()) {
+        payload.password = editForm.password
+      }
+      const res = await fetch(`/api/admin/users/${selectedUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast({ title: 'Error', description: data.error || 'Failed to update user', variant: 'destructive' })
+        return
+      }
+      toast({ title: 'User Updated', description: `${editForm.name} has been updated.` })
+      setEditDialogOpen(false)
+      fetchUsers()
+    } catch {
+      toast({ title: 'Error', description: 'Something went wrong.', variant: 'destructive' })
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
   const handleDelete = async () => {
     if (!selectedUser) return
     try {
@@ -149,6 +200,21 @@ export default function AdminUsersPage() {
           <p className="text-gray-500 mt-1">Manage user accounts and roles</p>
         </div>
         <div className="flex items-center gap-3">
+          <Button onClick={() => {
+            const headers = ['Name', 'Email', 'Role', 'Phone', 'Joined Date']
+            const rows = users.map((u) => [
+              u.name,
+              u.email,
+              u.role,
+              u.phone || '—',
+              formatDateForReport(u.createdAt),
+            ])
+            generateCSV(headers, rows, 'dapa-run-users-report')
+            toast({ title: 'Report Generated', description: 'Users report has been downloaded.' })
+          }} variant="outline" className="font-semibold">
+            <Download className="w-4 h-4 mr-2" />
+            Generate Report
+          </Button>
           <Select value={roleFilter} onValueChange={setRoleFilter}>
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Filter role" />
@@ -160,10 +226,12 @@ export default function AdminUsersPage() {
               <SelectItem value="admin">Admin</SelectItem>
             </SelectContent>
           </Select>
-          <Button onClick={() => setAddDialogOpen(true)} className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold">
-            <UserPlus className="w-4 h-4 mr-2" />
-            Add Staff
-          </Button>
+          {isAdmin && (
+            <Button onClick={() => setAddDialogOpen(true)} className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold">
+              <UserPlus className="w-4 h-4 mr-2" />
+              Add Staff
+            </Button>
+          )}
         </div>
       </div>
 
@@ -205,9 +273,7 @@ export default function AdminUsersPage() {
                     <TableCell className="text-sm text-gray-600">{user.email}</TableCell>
                     <TableCell className="text-sm text-gray-600">{user.phone || '—'}</TableCell>
                     <TableCell>
-                      {user.role === 'admin' ? (
-                        <Badge className={roleColors[user.role]}>Admin</Badge>
-                      ) : (
+                      {isAdmin && user.id !== currentUserId ? (
                         <Select
                           value={user.role}
                           onValueChange={(v) => handleRoleChange(user.id, v)}
@@ -218,8 +284,11 @@ export default function AdminUsersPage() {
                           <SelectContent>
                             <SelectItem value="user">User</SelectItem>
                             <SelectItem value="staff">Staff</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
                           </SelectContent>
                         </Select>
+                      ) : (
+                        <Badge className={roleColors[user.role]}>{user.role}</Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-gray-600">{user._count?.registrations ?? 0}</TableCell>
@@ -227,11 +296,18 @@ export default function AdminUsersPage() {
                       {new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                     </TableCell>
                     <TableCell className="text-right">
-                      {user.role !== 'admin' && (
-                        <Button variant="ghost" size="icon" onClick={() => { setSelectedUser(user); setDeleteDialogOpen(true) }}>
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </Button>
-                      )}
+                      <div className="flex items-center justify-end gap-1">
+                        {isAdmin && (
+                          <Button variant="ghost" size="icon" onClick={() => openEditUser(user)} title="Edit User">
+                            <Pencil className="w-4 h-4 text-gray-500" />
+                          </Button>
+                        )}
+                        {isAdmin && user.id !== currentUserId && (
+                          <Button variant="ghost" size="icon" onClick={() => { setSelectedUser(user); setDeleteDialogOpen(true) }}>
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -291,6 +367,66 @@ export default function AdminUsersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogTitle>Edit User - {selectedUser?.name}</DialogTitle>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label>Full Name</Label>
+              <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone</Label>
+              <Input type="tel" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Optional" />
+            </div>
+            {selectedUser?.id !== currentUserId && (
+              <div className="space-y-2">
+                <Label>Role</Label>
+                <Select value={editForm.role} onValueChange={(v) => setEditForm({ ...editForm, role: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="staff">Staff</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+                {selectedUser?.id === currentUserId && (
+                  <p className="text-xs text-gray-400">You cannot change your own role.</p>
+                )}
+              </div>
+            )}
+            {selectedUser?.id === currentUserId && (
+              <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                <p className="text-xs text-yellow-700">You cannot change your own role to prevent accidental removal of admin access.</p>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>New Password</Label>
+              <Input type="password" value={editForm.password} onChange={(e) => setEditForm({ ...editForm, password: e.target.value })} placeholder="Leave blank to keep current" />
+              <p className="text-xs text-gray-400">Only fill in if you want to change the password.</p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button
+                onClick={handleEditUser}
+                disabled={editSaving}
+                className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold"
+              >
+                {editSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Save Changes
+              </Button>
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

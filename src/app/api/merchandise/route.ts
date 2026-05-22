@@ -13,7 +13,21 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" },
     })
 
-    return NextResponse.json(items)
+    // Include stock and soldCount in response
+    const formatted = items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      image: item.image,
+      category: item.category,
+      description: item.description,
+      sizes: item.sizes,
+      badge: item.badge,
+      stock: item.stock ?? 0,
+      soldCount: item.soldCount ?? 0,
+    }))
+
+    return NextResponse.json(formatted)
   } catch (error) {
     console.error("Merchandise fetch error:", error)
     return NextResponse.json(

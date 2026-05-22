@@ -34,6 +34,7 @@ interface TeamMember {
 export default function AdminSettingsPage() {
   const { data: session } = useSession()
   const { toast } = useToast()
+  const isAdmin = (session?.user as Record<string, unknown>)?.role === 'admin'
   const [settings, setSettings] = useState<Settings>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -206,14 +207,16 @@ export default function AdminSettingsPage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Settings</h1>
           <p className="text-gray-500 mt-1">Manage site configuration, team, and account</p>
         </div>
-        <Button
-          onClick={handleSave}
-          disabled={saving}
-          className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold"
-        >
-          {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-          Save Changes
-        </Button>
+        {isAdmin && (
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold"
+          >
+            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+            Save Changes
+          </Button>
+        )}
       </div>
 
       <div className="space-y-6">
@@ -333,14 +336,16 @@ export default function AdminSettingsPage() {
                 <Users className="w-5 h-5 text-orange-500" />
                 <h3 className="font-bold text-gray-900 text-lg">Management Team</h3>
               </div>
-              <Button
-                onClick={() => setAddStaffOpen(true)}
-                size="sm"
-                className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold"
-              >
-                <UserPlus className="w-4 h-4 mr-1" />
-                Add Staff
-              </Button>
+              {isAdmin && (
+                <Button
+                  onClick={() => setAddStaffOpen(true)}
+                  size="sm"
+                  className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold"
+                >
+                  <UserPlus className="w-4 h-4 mr-1" />
+                  Add Staff
+                </Button>
+              )}
             </div>
             {teamLoading ? (
               <div className="flex items-center justify-center py-8">
@@ -371,7 +376,7 @@ export default function AdminSettingsPage() {
                       }`}>
                         {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
                       </span>
-                      {member.role !== 'admin' && (
+                      {member.role !== 'admin' && isAdmin && (
                         <Button
                           variant="ghost"
                           size="icon"
@@ -442,31 +447,35 @@ export default function AdminSettingsPage() {
                   placeholder="Confirm new password"
                 />
               </div>
-              <Button
-                onClick={handleChangePassword}
-                disabled={passwordLoading}
-                className="bg-gray-900 hover:bg-gray-800 text-white font-semibold"
-              >
-                {passwordLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Lock className="w-4 h-4 mr-2" />}
-                Update Password
-              </Button>
+              {isAdmin && (
+                <Button
+                  onClick={handleChangePassword}
+                  disabled={passwordLoading}
+                  className="bg-gray-900 hover:bg-gray-800 text-white font-semibold"
+                >
+                  {passwordLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Lock className="w-4 h-4 mr-2" />}
+                  Update Password
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Save button at bottom */}
-      <div className="mt-6 flex justify-end pb-4">
-        <Button
-          onClick={handleSave}
-          disabled={saving}
-          size="lg"
-          className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold shadow-lg"
-        >
-          {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-          Save All Changes
-        </Button>
-      </div>
+      {isAdmin && (
+        <div className="mt-6 flex justify-end pb-4">
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            size="lg"
+            className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold shadow-lg"
+          >
+            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+            Save All Changes
+          </Button>
+        </div>
+      )}
 
       {/* Add Staff Dialog */}
       <Dialog open={addStaffOpen} onOpenChange={setAddStaffOpen}>
