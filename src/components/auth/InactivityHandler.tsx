@@ -70,6 +70,22 @@ export default function InactivityHandler() {
       document.addEventListener(event, handleActivity, { passive: true })
     })
 
+    // Handle tab/browser close - clear session cookie so user must login again
+    const handleBeforeUnload = () => {
+      // The session cookie is already configured as a session-only cookie
+      // (no maxAge in NextAuth cookies config), so it will be automatically
+      // deleted when the browser closes. No additional action needed here.
+      // However, we also clear the next-auth callback-url cookie on unload
+      // to ensure a clean state on next visit.
+      try {
+        document.cookie = 'next-auth.callback-url=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+      } catch {
+        // Silently fail - cookie clearing is best-effort
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
     return () => {
       // Cleanup
       if (timerRef.current) clearTimeout(timerRef.current)
@@ -77,6 +93,7 @@ export default function InactivityHandler() {
       events.forEach((event) => {
         document.removeEventListener(event, handleActivity)
       })
+      window.removeEventListener('beforeunload', handleBeforeUnload)
     }
   }, [session, resetTimer])
 
