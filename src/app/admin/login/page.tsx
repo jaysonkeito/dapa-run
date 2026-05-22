@@ -30,13 +30,13 @@ export default function AdminLoginPage() {
       if (result?.error) {
         setError('Invalid email or password')
       } else {
-        // Verify admin role
+        // Verify admin or staff role
         const res = await fetch('/api/auth/session')
         const session = await res.json()
-        if (session?.user?.role === 'admin') {
+        if (session?.user?.role === 'admin' || session?.user?.role === 'staff') {
           router.push('/admin/dashboard')
         } else {
-          setError('Access denied. Admin credentials required.')
+          setError('Access denied. Admin or staff credentials required.')
           await signIn('credentials', { redirect: false }) // sign out
         }
       }

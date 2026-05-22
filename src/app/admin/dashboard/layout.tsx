@@ -47,6 +47,7 @@ export default function AdminDashboardLayout({
   const router = useRouter()
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   const userRole = (session?.user as Record<string, unknown>)?.role as string | undefined
 
@@ -56,6 +57,10 @@ export default function AdminDashboardLayout({
   }, [userRole])
 
   useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/admin/login')
     } else if (status === 'authenticated' && userRole !== 'admin' && userRole !== 'staff') {
@@ -63,7 +68,8 @@ export default function AdminDashboardLayout({
     }
   }, [session, status, router, userRole])
 
-  if (status === 'loading') {
+  // Don't render until mounted on client to avoid hydration mismatch
+  if (!mounted || status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">

@@ -31,6 +31,11 @@ export default function Header() {
   const { currentPage, setCurrentPage, cartCount, contactModalOpen, setContactModalOpen, mobileMenuOpen, setMobileMenuOpen, setAuthModalOpen, setAuthModalTab } = useStore()
   const count = cartCount()
   const [scrolled, setScrolled] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -79,7 +84,7 @@ export default function Header() {
 
               {/* Right side - Contact CTA + Cart (desktop) */}
               <div className="hidden md:flex items-center gap-4">
-                {session?.user ? (
+                {mounted && session?.user ? (
                   <div className="flex items-center gap-3">
                     {(session.user as Record<string, unknown>)?.role === 'admin' || (session.user as Record<string, unknown>)?.role === 'staff' ? (
                       <Button
@@ -129,7 +134,7 @@ export default function Header() {
 
               {/* Mobile - Cart + Menu */}
               <div className="flex items-center gap-2 md:hidden">
-                {session?.user && (
+                {mounted && session?.user && (
                   <span className="text-xs font-medium text-gray-600 max-w-[80px] truncate">{session.user.name}</span>
                 )}
                 <Button
@@ -199,7 +204,7 @@ export default function Header() {
                             </span>
                           )}
                         </Button>
-                        {session?.user ? (
+                        {mounted && session?.user ? (
                           <div className="space-y-2">
                             {(session.user as Record<string, unknown>)?.role === 'admin' || (session.user as Record<string, unknown>)?.role === 'staff' ? (
                               <Button
