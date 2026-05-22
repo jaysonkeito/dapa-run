@@ -6,7 +6,7 @@ import { db } from "@/lib/db"
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session || (session.user as Record<string, unknown>)?.role !== "admin") {
+    if (!session || !["admin", "staff"].includes((session.user as Record<string, unknown>)?.role as string)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 

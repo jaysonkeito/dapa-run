@@ -28,11 +28,23 @@ export default function AdminDashboardPage() {
           fetch('/api/admin/pos'),
           fetch('/api/admin/onsite-registration'),
         ])
-        const events = await eventsRes.json()
-        const merch = await merchRes.json()
-        const registrations = await regRes.json()
-        const posOrders = posRes.ok ? await posRes.json() : []
-        const onsiteRegs = onsiteRes.ok ? await onsiteRes.json() : []
+
+        // Safely parse each response - fallback to empty array if not OK or not an array
+        const safeParseArray = async (res: Response): Promise<unknown[]> => {
+          if (!res.ok) return []
+          try {
+            const data = await res.json()
+            return Array.isArray(data) ? data : []
+          } catch {
+            return []
+          }
+        }
+
+        const events = await safeParseArray(eventsRes)
+        const merch = await safeParseArray(merchRes)
+        const registrations = await safeParseArray(regRes)
+        const posOrders = await safeParseArray(posRes)
+        const onsiteRegs = await safeParseArray(onsiteRes)
 
         // Count unique users from registrations
         const uniqueUsers = new Set(registrations.map((r: Record<string, unknown>) => (r.user as Record<string, unknown>)?.id)).size
