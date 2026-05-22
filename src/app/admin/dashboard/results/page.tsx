@@ -35,9 +35,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Loader2, FileDown } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useToast } from '@/hooks/use-toast'
+import { generateCSV, formatPriceForReport, formatDateForReport } from '@/lib/report-utils'
 
 interface RaceResult {
   id: string
@@ -202,6 +203,18 @@ export default function AdminResultsPage() {
     }
   }
 
+  const handleGenerateReport = () => {
+    const headers = ['Event', 'Distance', 'Finishers Count', 'Date']
+    const rows = results.map(r => [
+      r.event?.title || getEventTitle(r.eventId),
+      r.distance,
+      String(getFinisherCount(r.finishers)),
+      r.event?.date ? formatDateForReport(r.event.date) : 'N/A',
+    ])
+    generateCSV(headers, rows, `race-results-${new Date().toISOString().split('T')[0]}`)
+    toast({ title: 'Report Generated', description: 'Race results report has been downloaded.' })
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -209,12 +222,18 @@ export default function AdminResultsPage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Race Results</h1>
           <p className="text-gray-500 mt-1">Manage race results for past events</p>
         </div>
-        {isAdmin && (
-          <Button onClick={openCreate} className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Result
+        <div className="flex items-center gap-2">
+          <Button onClick={handleGenerateReport} variant="outline" className="border-orange-500 text-orange-600 hover:bg-orange-50 font-semibold" disabled={results.length === 0}>
+            <FileDown className="w-4 h-4 mr-2" />
+            Generate Report
           </Button>
-        )}
+          {isAdmin && (
+            <Button onClick={openCreate} className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Result
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-md border-0 overflow-hidden">

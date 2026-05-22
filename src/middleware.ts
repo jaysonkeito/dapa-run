@@ -7,6 +7,11 @@ export default withAuth(
     const role = token?.role as string | undefined
     const pathname = req.nextUrl.pathname
 
+    // Block regular users from ALL admin dashboard routes
+    if (role !== 'admin' && role !== 'staff') {
+      return NextResponse.redirect(new URL('/admin/login', req.url))
+    }
+
     // Admin-only routes that staff cannot access
     const adminOnlyPaths = [
       '/admin/dashboard/merchandise',
