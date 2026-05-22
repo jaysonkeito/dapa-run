@@ -68,10 +68,10 @@ export default function UserAuthModal() {
         setAuthModalOpen(false)
         resetForms()
 
-        if (userRole === 'admin') {
+        if (userRole === 'admin' || userRole === 'staff') {
           toast({
-            title: 'Welcome, Admin!',
-            description: 'Redirecting to the Admin Dashboard...',
+            title: userRole === 'admin' ? 'Welcome, Admin!' : 'Welcome, Staff!',
+            description: 'Redirecting to the Dashboard...',
           })
           // Use window.location for a full page navigation to the admin dashboard
           // This ensures we leave the SPA context entirely

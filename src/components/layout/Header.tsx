@@ -81,7 +81,7 @@ export default function Header() {
               <div className="hidden md:flex items-center gap-4">
                 {session?.user ? (
                   <div className="flex items-center gap-3">
-                    {(session.user as Record<string, unknown>)?.role === 'admin' && (
+                    {(session.user as Record<string, unknown>)?.role === 'admin' || (session.user as Record<string, unknown>)?.role === 'staff' ? (
                       <Button
                         variant="outline"
                         size="sm"
@@ -89,9 +89,9 @@ export default function Header() {
                         className="border-orange-500 text-orange-600 hover:bg-orange-50 font-semibold"
                       >
                         <Shield className="w-4 h-4 mr-1" />
-                        Admin Dashboard
+                        Dashboard
                       </Button>
-                    )}
+                    ) : null}
                     <div className="flex items-center gap-2 text-sm">
                       <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
                         <User className="w-4 h-4 text-orange-600" />
@@ -201,15 +201,15 @@ export default function Header() {
                         </Button>
                         {session?.user ? (
                           <div className="space-y-2">
-                            {(session.user as Record<string, unknown>)?.role === 'admin' && (
+                            {(session.user as Record<string, unknown>)?.role === 'admin' || (session.user as Record<string, unknown>)?.role === 'staff' ? (
                               <Button
                                 onClick={() => { window.location.href = '/admin/dashboard'; setMobileMenuOpen(false) }}
                                 className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold"
                               >
                                 <Shield className="w-4 h-4 mr-2" />
-                                Admin Dashboard
+                                Dashboard
                               </Button>
-                            )}
+                            ) : null}
                             <Button
                               onClick={() => { signOut({ redirect: false }).then(() => { window.location.href = '/' }); setMobileMenuOpen(false) }}
                               variant="outline"
