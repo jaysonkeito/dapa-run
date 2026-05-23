@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { logAction } from "@/lib/system-logger"
 
 export async function GET() {
   try {
@@ -46,6 +47,17 @@ export async function POST(req: NextRequest) {
         badge: badge || null,
         stock: stock !== undefined ? Number(stock) : 0,
       },
+    })
+
+    const user = session.user as Record<string, unknown>
+    await logAction({
+      action: 'CREATE_MERCH',
+      category: 'inventory',
+      description: `Created inventory item "${name}"`,
+      userId: user?.id as string,
+      userName: user?.name as string,
+      userRole: user?.role as string,
+      details: { itemId: item.id, name, category },
     })
 
     return NextResponse.json(item, { status: 201 })

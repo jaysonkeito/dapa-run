@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { logAction } from "@/lib/system-logger"
 
 // Helper to generate order number: POS-YYYYMMDD-XXXX
 async function generateOrderNumber(): Promise<string> {
@@ -172,6 +173,17 @@ export async function POST(req: NextRequest) {
         console.error('Failed to update stock for item:', item.itemId, e)
       }
     }
+
+    const user = session.user as Record<string, unknown>
+    await logAction({
+      action: 'POS_SALE',
+      category: 'pos',
+      description: `POS sale ${orderNumber} - ₱${totalAmount.toLocaleString()}`,
+      userId: user?.id as string,
+      userName: user?.name as string,
+      userRole: user?.role as string,
+      details: { orderId: order.id, orderNumber, totalAmount, paymentMethod, itemCount: items.length },
+    })
 
     return NextResponse.json(order, { status: 201 })
   } catch (error) {

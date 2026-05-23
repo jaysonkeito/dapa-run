@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
+import { logAction } from '@/lib/system-logger'
 
 export async function PUT(
   request: Request,
@@ -60,6 +61,17 @@ export async function PUT(
       select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true },
     })
 
+    const sessionUser = session.user as Record<string, unknown>
+    await logAction({
+      action: 'UPDATE_USER',
+      category: 'users',
+      description: `Updated user "${updated.name}" (${updated.email})`,
+      userId: sessionUser?.id as string,
+      userName: sessionUser?.name as string,
+      userRole: sessionUser?.role as string,
+      details: { targetUserId: id, name: updated.name, role: updated.role },
+    })
+
     return NextResponse.json(updated)
   } catch (error) {
     console.error('Users PUT error:', error)
@@ -96,6 +108,17 @@ export async function DELETE(
     }
 
     await db.user.delete({ where: { id } })
+
+    const sessionUser = session.user as Record<string, unknown>
+    await logAction({
+      action: 'DELETE_USER',
+      category: 'users',
+      description: `Deleted user "${targetUser.name}" (${targetUser.email})`,
+      userId: sessionUser?.id as string,
+      userName: sessionUser?.name as string,
+      userRole: sessionUser?.role as string,
+      details: { deletedUserId: id, name: targetUser.name },
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

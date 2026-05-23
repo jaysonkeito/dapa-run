@@ -94,7 +94,7 @@ export default function AdminDashboardPage() {
       bgLight: 'bg-blue-50',
     },
     {
-      title: 'Merchandise Items',
+      title: 'Inventory Items',
       value: stats?.totalMerchandise ?? 0,
       icon: ShoppingBag,
       color: 'from-purple-500 to-purple-600',

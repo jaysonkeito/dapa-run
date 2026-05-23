@@ -189,7 +189,7 @@ export default function AdminMerchandisePage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Merchandise</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Inventory</h1>
           <p className="text-gray-500 mt-1">Manage product catalog</p>
         </div>
         <div className="flex items-center gap-2">

@@ -19,6 +19,7 @@ import {
   Monitor,
   UserPlus,
   PieChart,
+  FileText,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -27,7 +28,7 @@ import { signOut } from 'next-auth/react'
 const allSidebarItems = [
   { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard, roles: ['admin', 'staff'] },
   { label: 'Events', href: '/admin/dashboard/events', icon: Calendar, roles: ['admin', 'staff'] },
-  { label: 'Merchandise', href: '/admin/dashboard/merchandise', icon: ShoppingBag, roles: ['admin'] },
+  { label: 'Inventory', href: '/admin/dashboard/merchandise', icon: ShoppingBag, roles: ['admin'] },
   { label: 'Race Results', href: '/admin/dashboard/results', icon: Trophy, roles: ['admin', 'staff'] },
   { label: 'Registrations', href: '/admin/dashboard/registrations', icon: ClipboardList, roles: ['admin', 'staff'] },
   { label: 'On-site Registration', href: '/admin/dashboard/onsite-registration', icon: UserPlus, roles: ['admin', 'staff'] },
@@ -36,6 +37,7 @@ const allSidebarItems = [
   { label: 'Users', href: '/admin/dashboard/users', icon: Users, roles: ['admin'] },
   { label: 'Reports', href: '/admin/dashboard/reports', icon: BarChart3, roles: ['admin'] },
   { label: 'Settings', href: '/admin/dashboard/settings', icon: Settings, roles: ['admin'] },
+  { label: 'System Logs', href: '/admin/dashboard/system-logs', icon: FileText, roles: ['admin'] },
 ]
 
 export default function AdminDashboardLayout({
@@ -108,7 +110,6 @@ export default function AdminDashboardLayout({
           </div>
           <div>
             <h1 className="text-white font-bold text-lg">DAPA RUN</h1>
-            <p className="text-gray-400 text-xs">{siteSettings.siteTagline}</p>
           </div>
         </div>
         <nav className="flex-1 py-4 space-y-1 px-3">
@@ -155,7 +156,6 @@ export default function AdminDashboardLayout({
                 </div>
                 <div>
                   <h1 className="text-white font-bold text-lg">DAPA RUN</h1>
-                  <p className="text-gray-400 text-xs">{siteSettings.siteTagline}</p>
                 </div>
               </div>
               <button onClick={() => setSidebarOpen(false)} className="text-gray-400 hover:text-white">
@@ -200,8 +200,6 @@ export default function AdminDashboardLayout({
                 <Menu className="w-6 h-6" />
               </button>
               <div className="flex items-center gap-2 text-sm text-gray-500">
-                <span className="text-xs text-orange-500 font-medium hidden sm:inline">{siteSettings.siteTagline}</span>
-                <span className="text-gray-300 hidden sm:inline">·</span>
                 <button onClick={() => router.push('/admin/dashboard')} className="hover:text-orange-500 capitalize">{userRole} Panel</button>
                 {pathname !== '/admin/dashboard' && (
                   <>

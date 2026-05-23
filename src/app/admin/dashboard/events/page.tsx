@@ -86,6 +86,9 @@ const emptyEvent = {
   singletSizes: '',
 }
 
+const standardShirtSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL']
+const standardDistances = ['1K', '3K', '5K', '10K', '21K', '42K', '50K', '100K']
+
 export default function AdminEventsPage() {
   const router = useRouter()
   const { toast } = useToast()
@@ -99,6 +102,27 @@ export default function AdminEventsPage() {
   const [form, setForm] = useState(emptyEvent)
   const [saving, setSaving] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('all')
+
+  // Multi-select state for sizes and distances
+  const [finisherShirtSelectedSizes, setFinisherShirtSelectedSizes] = useState<string[]>([])
+  const [finisherShirtOtherSize, setFinisherShirtOtherSize] = useState('')
+  const [singletSelectedSizes, setSingletSelectedSizes] = useState<string[]>([])
+  const [singletOtherSize, setSingletOtherSize] = useState('')
+  const [selectedDistances, setSelectedDistances] = useState<string[]>([])
+  const [otherDistance, setOtherDistance] = useState('')
+
+  // Auto-calculate price range
+  useEffect(() => {
+    if (form.basePrice > 0) {
+      const maxTotal = form.basePrice + (form.finisherShirtPrice || 0) + (form.singletPrice || 0)
+      setForm(prev => ({
+        ...prev,
+        priceRange: `₱${form.basePrice.toLocaleString()} – ₱${maxTotal.toLocaleString()}`
+      }))
+    } else {
+      setForm(prev => ({ ...prev, priceRange: '' }))
+    }
+  }, [form.basePrice, form.finisherShirtPrice, form.singletPrice])
 
   const fetchEvents = async () => {
     try {
@@ -117,11 +141,42 @@ export default function AdminEventsPage() {
   const openCreate = () => {
     setSelectedEvent(null)
     setForm(emptyEvent)
+    setFinisherShirtSelectedSizes([])
+    setFinisherShirtOtherSize('')
+    setSingletSelectedSizes([])
+    setSingletOtherSize('')
+    setSelectedDistances([])
+    setOtherDistance('')
     setDialogOpen(true)
   }
 
   const openEdit = (event: Event) => {
     setSelectedEvent(event)
+
+    // Parse finisher shirt sizes
+    const fSizes = event.finisherShirtSizes ? event.finisherShirtSizes.split(',').filter(Boolean) : []
+    const hasOtherFShirt = fSizes.some(s => !standardShirtSizes.includes(s))
+    const parsedFSizes = fSizes.filter(s => standardShirtSizes.includes(s))
+    if (hasOtherFShirt) parsedFSizes.push('Other')
+    setFinisherShirtSelectedSizes(parsedFSizes)
+    setFinisherShirtOtherSize(fSizes.find(s => !standardShirtSizes.includes(s)) || '')
+
+    // Parse singlet sizes
+    const sSizes = event.singletSizes ? event.singletSizes.split(',').filter(Boolean) : []
+    const hasOtherSShirt = sSizes.some(s => !standardShirtSizes.includes(s))
+    const parsedSSizes = sSizes.filter(s => standardShirtSizes.includes(s))
+    if (hasOtherSShirt) parsedSSizes.push('Other')
+    setSingletSelectedSizes(parsedSSizes)
+    setSingletOtherSize(sSizes.find(s => !standardShirtSizes.includes(s)) || '')
+
+    // Parse distances
+    const dists = event.distances ? event.distances.split(',').filter(Boolean) : []
+    const hasOtherDist = dists.some(d => !standardDistances.includes(d))
+    const parsedDists = dists.filter(d => standardDistances.includes(d))
+    if (hasOtherDist) parsedDists.push('Other')
+    setSelectedDistances(parsedDists)
+    setOtherDistance(dists.find(d => !standardDistances.includes(d)) || '')
+
     setForm({
       title: event.title,
       date: event.date,
@@ -211,6 +266,123 @@ export default function AdminEventsPage() {
     toast({ title: 'Report Generated', description: 'Events report has been downloaded.' })
   }
 
+  // Helper for toggling finisher shirt sizes
+  const toggleFinisherShirtSize = (size: string) => {
+    const newArr = finisherShirtSelectedSizes.includes(size)
+      ? finisherShirtSelectedSizes.filter(s => s !== size)
+      : [...finisherShirtSelectedSizes, size]
+    setFinisherShirtSelectedSizes(newArr)
+    const allSizes = newArr.filter(s => s !== 'Other')
+    if (size === 'Other' ? newArr.includes('Other') : finisherShirtSelectedSizes.includes('Other')) {
+      if (finisherShirtOtherSize) allSizes.push(finisherShirtOtherSize)
+    }
+    if (size !== 'Other' && newArr.includes('Other') && finisherShirtOtherSize) {
+      allSizes.push(finisherShirtOtherSize)
+    }
+    setForm(prev => ({ ...prev, finisherShirtSizes: allSizes.join(',') }))
+  }
+
+  const handleFinisherShirtOtherCheck = (checked: boolean) => {
+    if (checked) {
+      const newArr = [...finisherShirtSelectedSizes, 'Other']
+      setFinisherShirtSelectedSizes(newArr)
+      const allSizes = newArr.filter(s => s !== 'Other')
+      if (finisherShirtOtherSize) allSizes.push(finisherShirtOtherSize)
+      setForm(prev => ({ ...prev, finisherShirtSizes: allSizes.join(',') }))
+    } else {
+      const newArr = finisherShirtSelectedSizes.filter(s => s !== 'Other')
+      setFinisherShirtSelectedSizes(newArr)
+      setFinisherShirtOtherSize('')
+      const allSizes = [...newArr]
+      setForm(prev => ({ ...prev, finisherShirtSizes: allSizes.join(',') }))
+    }
+  }
+
+  const handleFinisherShirtOtherText = (value: string) => {
+    setFinisherShirtOtherSize(value)
+    const allSizes = finisherShirtSelectedSizes.filter(s => s !== 'Other')
+    if (value) allSizes.push(value)
+    setForm(prev => ({ ...prev, finisherShirtSizes: allSizes.join(',') }))
+  }
+
+  // Helper for toggling singlet sizes
+  const toggleSingletSize = (size: string) => {
+    const newArr = singletSelectedSizes.includes(size)
+      ? singletSelectedSizes.filter(s => s !== size)
+      : [...singletSelectedSizes, size]
+    setSingletSelectedSizes(newArr)
+    const allSizes = newArr.filter(s => s !== 'Other')
+    if (size === 'Other' ? newArr.includes('Other') : singletSelectedSizes.includes('Other')) {
+      if (singletOtherSize) allSizes.push(singletOtherSize)
+    }
+    if (size !== 'Other' && newArr.includes('Other') && singletOtherSize) {
+      allSizes.push(singletOtherSize)
+    }
+    setForm(prev => ({ ...prev, singletSizes: allSizes.join(',') }))
+  }
+
+  const handleSingletOtherCheck = (checked: boolean) => {
+    if (checked) {
+      const newArr = [...singletSelectedSizes, 'Other']
+      setSingletSelectedSizes(newArr)
+      const allSizes = newArr.filter(s => s !== 'Other')
+      if (singletOtherSize) allSizes.push(singletOtherSize)
+      setForm(prev => ({ ...prev, singletSizes: allSizes.join(',') }))
+    } else {
+      const newArr = singletSelectedSizes.filter(s => s !== 'Other')
+      setSingletSelectedSizes(newArr)
+      setSingletOtherSize('')
+      const allSizes = [...newArr]
+      setForm(prev => ({ ...prev, singletSizes: allSizes.join(',') }))
+    }
+  }
+
+  const handleSingletOtherText = (value: string) => {
+    setSingletOtherSize(value)
+    const allSizes = singletSelectedSizes.filter(s => s !== 'Other')
+    if (value) allSizes.push(value)
+    setForm(prev => ({ ...prev, singletSizes: allSizes.join(',') }))
+  }
+
+  // Helper for toggling distances
+  const toggleDistance = (dist: string) => {
+    const newArr = selectedDistances.includes(dist)
+      ? selectedDistances.filter(d => d !== dist)
+      : [...selectedDistances, dist]
+    setSelectedDistances(newArr)
+    const allDists = newArr.filter(d => d !== 'Other')
+    if (dist === 'Other' ? newArr.includes('Other') : selectedDistances.includes('Other')) {
+      if (otherDistance) allDists.push(otherDistance)
+    }
+    if (dist !== 'Other' && newArr.includes('Other') && otherDistance) {
+      allDists.push(otherDistance)
+    }
+    setForm(prev => ({ ...prev, distances: allDists.join(',') }))
+  }
+
+  const handleDistanceOtherCheck = (checked: boolean) => {
+    if (checked) {
+      const newArr = [...selectedDistances, 'Other']
+      setSelectedDistances(newArr)
+      const allDists = newArr.filter(d => d !== 'Other')
+      if (otherDistance) allDists.push(otherDistance)
+      setForm(prev => ({ ...prev, distances: allDists.join(',') }))
+    } else {
+      const newArr = selectedDistances.filter(d => d !== 'Other')
+      setSelectedDistances(newArr)
+      setOtherDistance('')
+      const allDists = [...newArr]
+      setForm(prev => ({ ...prev, distances: allDists.join(',') }))
+    }
+  }
+
+  const handleDistanceOtherText = (value: string) => {
+    setOtherDistance(value)
+    const allDists = selectedDistances.filter(d => d !== 'Other')
+    if (value) allDists.push(value)
+    setForm(prev => ({ ...prev, distances: allDists.join(',') }))
+  }
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -262,7 +434,7 @@ export default function AdminEventsPage() {
                 <TableHead>Race Date</TableHead>
                 <TableHead>Reg. Close</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Base Price</TableHead>
+                <TableHead>Registration Fee</TableHead>
                 <TableHead>Registrations</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -347,11 +519,11 @@ export default function AdminEventsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Race Date</Label>
-                  <Input value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} placeholder="e.g. July 19, 2026" />
+                  <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label>Race Time</Label>
-                  <Input value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} placeholder="e.g. 4:00 AM - 9:00 AM" />
+                  <Input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
                 </div>
               </div>
             </div>
@@ -362,11 +534,11 @@ export default function AdminEventsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Registration Close Date</Label>
-                  <Input value={form.regCloseDate} onChange={(e) => setForm({ ...form, regCloseDate: e.target.value })} placeholder="e.g. July 15, 2026" />
+                  <Input type="date" value={form.regCloseDate} onChange={(e) => setForm({ ...form, regCloseDate: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label>Registration Close Time</Label>
-                  <Input value={form.regCloseTime} onChange={(e) => setForm({ ...form, regCloseTime: e.target.value })} placeholder="e.g. 11:59 PM" />
+                  <Input type="time" value={form.regCloseTime} onChange={(e) => setForm({ ...form, regCloseTime: e.target.value })} />
                 </div>
               </div>
             </div>
@@ -376,28 +548,101 @@ export default function AdminEventsPage() {
               <p className="text-sm font-semibold text-orange-700 mb-3">Registration Pricing</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label>Base Registration (₱)</Label>
+                  <Label>Registration Fee (₱)</Label>
                   <Input type="number" value={form.basePrice} onChange={(e) => setForm({ ...form, basePrice: Number(e.target.value) })} placeholder="500" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Finisher Shirt (₱)</Label>
+                  <Label><span className="font-bold text-orange-700">Optional Add-on:</span> Finisher Shirt (₱)</Label>
                   <Input type="number" value={form.finisherShirtPrice} onChange={(e) => setForm({ ...form, finisherShirtPrice: Number(e.target.value) })} placeholder="500" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Singlet (₱)</Label>
+                  <Label><span className="font-bold text-orange-700">Optional Add-on:</span> Race Singlet (₱)</Label>
                   <Input type="number" value={form.singletPrice} onChange={(e) => setForm({ ...form, singletPrice: Number(e.target.value) })} placeholder="500" />
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+
+              {/* Finisher Shirt Sizes */}
+              <div className="mt-4">
                 <div className="space-y-2">
-                  <Label>Finisher Shirt Sizes (comma-separated)</Label>
-                  <Input value={form.finisherShirtSizes} onChange={(e) => setForm({ ...form, finisherShirtSizes: e.target.value })} placeholder="e.g. XS,S,M,L,XL,XXL" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Singlet Sizes (comma-separated)</Label>
-                  <Input value={form.singletSizes} onChange={(e) => setForm({ ...form, singletSizes: e.target.value })} placeholder="e.g. XS,S,M,L,XL,XXL" />
+                  <Label>Finisher Shirt Sizes</Label>
+                  <div className="border rounded-lg p-3 bg-white space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      {standardShirtSizes.map((size) => (
+                        <label key={size} className="flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={finisherShirtSelectedSizes.includes(size)}
+                            onChange={() => toggleFinisherShirtSize(size)}
+                            className="rounded border-gray-300"
+                          />
+                          <span className="text-sm">{size}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2 pt-1 border-t">
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={finisherShirtSelectedSizes.includes('Other')}
+                          onChange={(e) => handleFinisherShirtOtherCheck(e.target.checked)}
+                          className="rounded border-gray-300"
+                        />
+                        <span className="text-sm font-medium">Other</span>
+                      </label>
+                      {finisherShirtSelectedSizes.includes('Other') && (
+                        <Input
+                          value={finisherShirtOtherSize}
+                          onChange={(e) => handleFinisherShirtOtherText(e.target.value)}
+                          placeholder="Enter custom size"
+                          className="flex-1 h-8 text-sm"
+                        />
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              {/* Singlet Sizes */}
+              <div className="mt-4">
+                <div className="space-y-2">
+                  <Label>Race Singlet Sizes</Label>
+                  <div className="border rounded-lg p-3 bg-white space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      {standardShirtSizes.map((size) => (
+                        <label key={size} className="flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={singletSelectedSizes.includes(size)}
+                            onChange={() => toggleSingletSize(size)}
+                            className="rounded border-gray-300"
+                          />
+                          <span className="text-sm">{size}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2 pt-1 border-t">
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={singletSelectedSizes.includes('Other')}
+                          onChange={(e) => handleSingletOtherCheck(e.target.checked)}
+                          className="rounded border-gray-300"
+                        />
+                        <span className="text-sm font-medium">Other</span>
+                      </label>
+                      {singletSelectedSizes.includes('Other') && (
+                        <Input
+                          value={singletOtherSize}
+                          onChange={(e) => handleSingletOtherText(e.target.value)}
+                          placeholder="Enter custom size"
+                          className="flex-1 h-8 text-sm"
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {form.basePrice > 0 && (
                 <p className="text-xs text-orange-600 mt-3 font-medium">
                   Max total: ₱{([form.basePrice, form.finisherShirtPrice, form.singletPrice].reduce((a, b) => a + b, 0)).toLocaleString()} (with all add-ons)
@@ -407,12 +652,58 @@ export default function AdminEventsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Price Range (display)</Label>
-                <Input value={form.priceRange} onChange={(e) => setForm({ ...form, priceRange: e.target.value })} placeholder="e.g. ₱500 – ₱1,800" />
+                <Label>Price Range</Label>
+                <div className="h-10 px-3 flex items-center rounded-md border bg-gray-50 text-sm text-gray-700">
+                  {form.basePrice > 0 ? (
+                    <>
+                      ₱{form.basePrice.toLocaleString()} – ₱{(
+                        form.basePrice +
+                        (form.finisherShirtPrice || 0) +
+                        (form.singletPrice || 0)
+                      ).toLocaleString()}
+                    </>
+                  ) : (
+                    <span className="text-gray-400">Set Registration Fee to auto-calculate</span>
+                  )}
+                </div>
+                <input type="hidden" value={form.priceRange} />
               </div>
               <div className="space-y-2">
-                <Label>Distances (comma-separated)</Label>
-                <Input value={form.distances} onChange={(e) => setForm({ ...form, distances: e.target.value })} placeholder="e.g. 3K,5K,10K,21K" />
+                <Label>Distances</Label>
+                <div className="border rounded-lg p-3 bg-white space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    {standardDistances.map((dist) => (
+                      <label key={dist} className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedDistances.includes(dist)}
+                          onChange={() => toggleDistance(dist)}
+                          className="rounded border-gray-300"
+                        />
+                        <span className="text-sm">{dist}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 pt-1 border-t">
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedDistances.includes('Other')}
+                        onChange={(e) => handleDistanceOtherCheck(e.target.checked)}
+                        className="rounded border-gray-300"
+                      />
+                      <span className="text-sm font-medium">Other</span>
+                    </label>
+                    {selectedDistances.includes('Other') && (
+                      <Input
+                        value={otherDistance}
+                        onChange={(e) => handleDistanceOtherText(e.target.value)}
+                        placeholder="Enter custom distance"
+                        className="flex-1 h-8 text-sm"
+                      />
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
             <div className="space-y-2">

@@ -116,6 +116,18 @@ model POSOrderItem {
   order     POSOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
+model SystemLog {
+  id          String   @id @default(cuid())
+  action      String   // e.g., "CREATE_EVENT", "UPDATE_EVENT", "DELETE_EVENT", "CREATE_MERCH", "UPDATE_MERCH", "DELETE_MERCH", "POS_SALE", "ONSITE_REG", "UPDATE_SETTINGS", "USER_LOGIN", etc.
+  category    String   // e.g., "events", "inventory", "pos", "registrations", "users", "settings", "auth", "results"
+  description String   // Human-readable description
+  userId      String?  // Who performed the action
+  userName    String?  // Name of the user who performed the action
+  userRole    String?  // Role of the user
+  details     String?  // JSON string with additional details
+  createdAt   DateTime @default(now())
+}
+
 model OnSiteRegistration {
   id            String   @id @default(cuid())
   eventId       String

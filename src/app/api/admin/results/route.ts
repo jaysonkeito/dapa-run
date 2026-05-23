@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { logAction } from "@/lib/system-logger"
 
 export async function GET() {
   try {
@@ -44,6 +45,17 @@ export async function POST(req: NextRequest) {
         distance,
         finishers: typeof finishers === "string" ? finishers : JSON.stringify(finishers),
       },
+    })
+
+    const user = session.user as Record<string, unknown>
+    await logAction({
+      action: 'CREATE_RESULT',
+      category: 'results',
+      description: `Created race result for distance ${distance}`,
+      userId: user?.id as string,
+      userName: user?.name as string,
+      userRole: user?.role as string,
+      details: { resultId: result.id, eventId, distance },
     })
 
     return NextResponse.json(result, { status: 201 })

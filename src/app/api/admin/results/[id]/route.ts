@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { logAction } from "@/lib/system-logger"
 
 export async function PUT(
   req: NextRequest,
@@ -25,6 +26,17 @@ export async function PUT(
       data: body,
     })
 
+    const user = session.user as Record<string, unknown>
+    await logAction({
+      action: 'UPDATE_RESULT',
+      category: 'results',
+      description: `Updated race result`,
+      userId: user?.id as string,
+      userName: user?.name as string,
+      userRole: user?.role as string,
+      details: { resultId: id },
+    })
+
     return NextResponse.json(result)
   } catch (error) {
     console.error("Admin results update error:", error)
@@ -44,7 +56,21 @@ export async function DELETE(
 
     const { id } = await params
 
+    // Get result info before deletion for logging
+    const existingResult = await db.raceResult.findUnique({ where: { id } })
+
     await db.raceResult.delete({ where: { id } })
+
+    const user = session.user as Record<string, unknown>
+    await logAction({
+      action: 'DELETE_RESULT',
+      category: 'results',
+      description: `Deleted race result for distance ${existingResult?.distance || 'unknown'}`,
+      userId: user?.id as string,
+      userName: user?.name as string,
+      userRole: user?.role as string,
+      details: { resultId: id },
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

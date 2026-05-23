@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { logAction } from "@/lib/system-logger"
 
 export async function GET() {
   try {
@@ -56,6 +57,17 @@ export async function POST(req: NextRequest) {
         finisherShirtSizes: finisherShirtSizes || null,
         singletSizes: singletSizes || null,
       },
+    })
+
+    const user = session.user as Record<string, unknown>
+    await logAction({
+      action: 'CREATE_EVENT',
+      category: 'events',
+      description: `Created event "${title}"`,
+      userId: user?.id as string,
+      userName: user?.name as string,
+      userRole: user?.role as string,
+      details: { eventId: event.id, title },
     })
 
     return NextResponse.json(event, { status: 201 })

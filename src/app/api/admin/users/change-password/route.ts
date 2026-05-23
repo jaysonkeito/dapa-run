@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
+import { logAction } from '@/lib/system-logger'
 
 export async function PUT(req: NextRequest) {
   try {
@@ -37,6 +38,15 @@ export async function PUT(req: NextRequest) {
     await db.user.update({
       where: { id: userId },
       data: { password: hashedPassword },
+    })
+
+    await logAction({
+      action: 'CHANGE_PASSWORD',
+      category: 'auth',
+      description: `Password changed for user`,
+      userId,
+      userName: (session.user as Record<string, unknown>)?.name as string,
+      userRole: (session.user as Record<string, unknown>)?.role as string,
     })
 
     return NextResponse.json({ message: 'Password updated successfully' })

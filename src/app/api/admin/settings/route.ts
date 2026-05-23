@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { logAction } from '@/lib/system-logger'
 
 export async function GET() {
   try {
@@ -42,6 +43,17 @@ export async function PUT(request: Request) {
         create: { key: item.key, value: item.value },
       })
     }
+
+    const user = session.user as Record<string, unknown>
+    await logAction({
+      action: 'UPDATE_SETTINGS',
+      category: 'settings',
+      description: `Updated ${body.length} system settings`,
+      userId: user?.id as string,
+      userName: user?.name as string,
+      userRole: user?.role as string,
+      details: { keys: body.map((i: { key: string; value: string }) => i.key) },
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

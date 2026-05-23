@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
+import { logAction } from '@/lib/system-logger'
 
 export async function GET() {
   try {
@@ -71,6 +72,17 @@ export async function POST(request: Request) {
         role: true,
         createdAt: true,
       },
+    })
+
+    const sessionUser = session.user as Record<string, unknown>
+    await logAction({
+      action: 'CREATE_USER',
+      category: 'users',
+      description: `Created user "${name}" (${email}) with role staff`,
+      userId: sessionUser?.id as string,
+      userName: sessionUser?.name as string,
+      userRole: sessionUser?.role as string,
+      details: { newUserId: user.id, name, email, role: 'staff' },
     })
 
     return NextResponse.json(user, { status: 201 })

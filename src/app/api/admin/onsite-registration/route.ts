@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { logAction } from "@/lib/system-logger"
 
 // GET - List all on-site registrations
 export async function GET() {
@@ -100,6 +101,17 @@ export async function POST(req: NextRequest) {
           },
         },
       },
+    })
+
+    const user = session.user as Record<string, unknown>
+    await logAction({
+      action: 'ONSITE_REG',
+      category: 'registrations',
+      description: `On-site registration for "${participantName}" in event`,
+      userId: user?.id as string,
+      userName: user?.name as string,
+      userRole: user?.role as string,
+      details: { registrationId: registration.id, eventId, participantName, distance, amountPaid },
     })
 
     return NextResponse.json(registration, { status: 201 })

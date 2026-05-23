@@ -19,6 +19,7 @@ export default withAuth(
       '/admin/dashboard/users',
       '/admin/dashboard/settings',
       '/admin/dashboard/reports',
+      '/admin/dashboard/system-logs',
     ]
 
     // Check if current path is admin-only
