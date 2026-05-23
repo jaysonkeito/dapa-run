@@ -25,3 +25,28 @@ Stage Summary:
 - Middleware now blocks regular users from all admin routes
 - Race Results page now has Generate Report button
 - Latest code pushed to GitHub at commit 2a85bfa
+
+---
+Task ID: 2
+Agent: Main
+Task: Fix admin login Configuration error - /api/auth/error?error=Configuration
+
+Work Log:
+- Analyzed user's screenshots: Image 1 shows NextAuth error page at /api/auth/error?error=Configuration, Image 2 shows landing page with admin logged in
+- Identified root cause: NEXTAUTH_URL and NEXTAUTH_SECRET were missing from .env file after git reset in previous session
+- The Configuration error occurs because NextAuth can't verify request origin without NEXTAUTH_URL
+- Fixed .env to include NEXTAUTH_URL=https://dapa-run-dumaguete.space-z.ai and NEXTAUTH_SECRET=dapa-run-secret-key-2026
+- Updated src/lib/auth.ts to auto-detect production mode based on NEXTAUTH_URL prefix (https vs http)
+- Set secure cookies (secure: true) when in production (HTTPS), and insecure when local (HTTP)
+- Added pages.error: "/admin/login" to redirect NextAuth errors to login page instead of showing error page
+- Added Suspense boundary to admin login page (required for useSearchParams in Next.js 14+)
+- Added error query parameter handling on login page (shows user-friendly error messages)
+- Built successfully, pushed to GitHub (commits 0933023, b80457e)
+- Restarted dev server with proper initialization
+
+Stage Summary:
+- Root cause: Missing NEXTAUTH_URL/NEXTAUTH_SECRET caused NextAuth Configuration error on deployed site
+- NextAuth error page now redirects to /admin/login instead of showing generic error
+- Secure cookies enabled for HTTPS production environment
+- Login page shows user-friendly error messages when redirected from auth errors
+- All changes pushed to GitHub
