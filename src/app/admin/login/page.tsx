@@ -20,7 +20,7 @@ function AdminLoginForm() {
   useEffect(() => {
     const errorParam = searchParams.get('error')
     if (errorParam === 'Configuration') {
-      setError('Session expired or server configuration error. Please try again.')
+      setError('Session expired. Please try again.')
     } else if (errorParam === 'SessionRequired') {
       setError('Please sign in to access the admin panel.')
     } else if (errorParam) {
@@ -34,6 +34,8 @@ function AdminLoginForm() {
     setLoading(true)
 
     try {
+      // Use signIn with callbackUrl for reliable redirect after login
+      // This avoids the session check race condition with redirect: false
       const result = await signIn('credentials', {
         email,
         password,
@@ -42,20 +44,27 @@ function AdminLoginForm() {
 
       if (result?.error) {
         setError('Invalid email or password')
+        setLoading(false)
+        return
+      }
+
+      // Login succeeded - wait a moment for session to be available
+      // then check role and redirect
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      const res = await fetch('/api/auth/session')
+      const session = await res.json()
+
+      if (session?.user?.role === 'admin' || session?.user?.role === 'staff') {
+        // Use window.location for a full page navigation to ensure
+        // middleware picks up the new session cookie
+        window.location.href = '/admin/dashboard'
       } else {
-        // Verify admin or staff role
-        const res = await fetch('/api/auth/session')
-        const session = await res.json()
-        if (session?.user?.role === 'admin' || session?.user?.role === 'staff') {
-          router.push('/admin/dashboard')
-        } else {
-          setError('Access denied. Admin or staff credentials required.')
-          await signIn('credentials', { redirect: false }) // sign out
-        }
+        setError('Access denied. Admin or staff credentials required.')
+        setLoading(false)
       }
     } catch {
       setError('Something went wrong. Please try again.')
-    } finally {
       setLoading(false)
     }
   }

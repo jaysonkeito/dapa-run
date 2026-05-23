@@ -76,11 +76,11 @@ export default function AdminDashboardLayout({
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/admin/login')
+      window.location.href = '/admin/login'
     } else if (status === 'authenticated' && userRole !== 'admin' && userRole !== 'staff') {
-      router.push('/admin/login')
+      window.location.href = '/admin/login'
     }
-  }, [session, status, router, userRole])
+  }, [session, status, userRole])
 
   // Don't render until mounted on client to avoid hydration mismatch
   if (!mounted || status === 'loading') {

@@ -3,11 +3,6 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { db } from "@/lib/db"
 
-// Determine production mode based on NEXTAUTH_URL
-// If NEXTAUTH_URL starts with https, we're in production
-const nextauthUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-const isProduction = nextauthUrl.startsWith('https')
-
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -28,40 +23,13 @@ export const authOptions: NextAuthOptions = {
   ],
   session: {
     strategy: "jwt",
-    maxAge: 15 * 60, // 15 minutes - matches inactivity timeout
+    maxAge: 15 * 60, // 15 minutes
   },
   jwt: {
     maxAge: 15 * 60, // 15 minutes
   },
-  cookies: {
-    sessionToken: {
-      name: `next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: isProduction,
-        // No maxAge = session cookie (deleted when browser/tab closes)
-      },
-    },
-    callbackUrl: {
-      name: `next-auth.callback-url`,
-      options: {
-        sameSite: "lax",
-        path: "/",
-        secure: isProduction,
-      },
-    },
-    csrfToken: {
-      name: `next-auth.csrf-token`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: isProduction,
-      },
-    },
-  },
+  // No custom cookies - let NextAuth auto-detect from request headers
+  // NextAuth reads X-Forwarded-Proto from Caddy/proxy to determine HTTPS
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
