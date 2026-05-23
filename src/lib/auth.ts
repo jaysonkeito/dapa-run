@@ -3,16 +3,10 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { db } from "@/lib/db"
 
-// Ensure NEXTAUTH_URL is set - required for deployed sites
-if (!process.env.NEXTAUTH_URL) {
-  process.env.NEXTAUTH_URL = 'https://dapa-run-dumaguete.space-z.ai'
-}
-
-// Auto-detect secure cookie setting based on NEXTAUTH_URL
-const isProduction = process.env.NEXTAUTH_URL?.startsWith('https') ?? false
-// Use "lax" for sameSite even in production - the site is same-origin
-// "none" is only needed for cross-site cookie scenarios
-const sameSiteValue = "lax"
+// Determine production mode based on NEXTAUTH_URL
+// If NEXTAUTH_URL starts with https, we're in production
+const nextauthUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+const isProduction = nextauthUrl.startsWith('https')
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -44,7 +38,7 @@ export const authOptions: NextAuthOptions = {
       name: `next-auth.session-token`,
       options: {
         httpOnly: true,
-        sameSite: sameSiteValue,
+        sameSite: "lax",
         path: "/",
         secure: isProduction,
         // No maxAge = session cookie (deleted when browser/tab closes)
@@ -53,7 +47,7 @@ export const authOptions: NextAuthOptions = {
     callbackUrl: {
       name: `next-auth.callback-url`,
       options: {
-        sameSite: sameSiteValue,
+        sameSite: "lax",
         path: "/",
         secure: isProduction,
       },
@@ -62,7 +56,7 @@ export const authOptions: NextAuthOptions = {
       name: `next-auth.csrf-token`,
       options: {
         httpOnly: true,
-        sameSite: sameSiteValue,
+        sameSite: "lax",
         path: "/",
         secure: isProduction,
       },
