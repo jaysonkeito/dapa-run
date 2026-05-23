@@ -3,6 +3,17 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { db } from "@/lib/db"
 
+// Ensure NEXTAUTH_URL is set - required for deployed sites
+if (!process.env.NEXTAUTH_URL) {
+  process.env.NEXTAUTH_URL = 'https://dapa-run-dumaguete.space-z.ai'
+}
+
+// Auto-detect secure cookie setting based on NEXTAUTH_URL
+const isProduction = process.env.NEXTAUTH_URL?.startsWith('https') ?? false
+// Use "lax" for sameSite even in production - the site is same-origin
+// "none" is only needed for cross-site cookie scenarios
+const sameSiteValue = "lax"
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -33,27 +44,27 @@ export const authOptions: NextAuthOptions = {
       name: `next-auth.session-token`,
       options: {
         httpOnly: true,
-        sameSite: "lax",
+        sameSite: sameSiteValue,
         path: "/",
-        secure: false,
+        secure: isProduction,
         // No maxAge = session cookie (deleted when browser/tab closes)
       },
     },
     callbackUrl: {
       name: `next-auth.callback-url`,
       options: {
-        sameSite: "lax",
+        sameSite: sameSiteValue,
         path: "/",
-        secure: false,
+        secure: isProduction,
       },
     },
     csrfToken: {
       name: `next-auth.csrf-token`,
       options: {
         httpOnly: true,
-        sameSite: "lax",
+        sameSite: sameSiteValue,
         path: "/",
-        secure: false,
+        secure: isProduction,
       },
     },
   },
@@ -75,6 +86,7 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/admin/login",
+    error: "/admin/login",
   },
   secret: process.env.NEXTAUTH_SECRET || "dapa-run-secret-key-2026",
 }
