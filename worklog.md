@@ -50,3 +50,25 @@ Stage Summary:
 - Secure cookies enabled for HTTPS production environment
 - Login page shows user-friendly error messages when redirected from auth errors
 - All changes pushed to GitHub
+
+---
+Task ID: 3
+Agent: Main
+Task: Fix admin login redirect loop - credentials work but dashboard redirects back to login
+
+Work Log:
+- Identified that the custom cookie configuration (secure: isProduction, sameSite: "none"/"lax") was causing NextAuth to set Secure cookies that weren't being sent on subsequent requests
+- The NEXTAUTH_URL=https://dapa-run-dumaguete.space-z.ai in .env caused cookies to be set with Secure flag even for localhost access
+- Removed ALL custom cookie configuration from auth.ts - let NextAuth auto-detect from request headers
+- Removed NEXTAUTH_URL from .env - NextAuth reads X-Forwarded-Proto from Caddy proxy to detect HTTPS
+- Changed login page redirect from router.push to window.location.href for full page navigation (ensures middleware picks up session cookie)
+- Changed dashboard layout redirect from router.push to window.location.href for consistency
+- Added 500ms delay after signIn before session check to avoid race condition
+- Tested full end-to-end login flow: CSRF → Login → Session → Dashboard access all work
+
+Stage Summary:
+- Root cause: Custom cookie overrides + hardcoded NEXTAUTH_URL caused Secure cookies on HTTP and cookie mismatches
+- Fix: Let NextAuth handle cookies automatically based on request context
+- Login now uses window.location.href for reliable full-page redirects
+- Full login flow verified working end-to-end
+- Changes pushed to GitHub (commit 7cce75d)
