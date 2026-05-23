@@ -45,7 +45,7 @@ const categoryColors: Record<string, string> = {
   developer: 'bg-teal-500 text-white',
 }
 
-export default function SystemLogsPage() {
+export default function DevLogsPage() {
   const [logs, setLogs] = useState<SystemLog[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -63,7 +63,7 @@ export default function SystemLogsPage() {
       if (actionFilter !== 'all') params.set('action', actionFilter)
       if (search) params.set('search', search)
 
-      const res = await fetch(`/api/admin/system-logs?${params}`)
+      const res = await fetch(`/api/admin-developer/logs?${params}`)
       const data = await res.json()
       setLogs(data.logs || [])
       setTotalPages(data.totalPages || 1)
@@ -109,9 +109,9 @@ export default function SystemLogsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">System Logs</h1>
-          <p className="text-gray-500 mt-1">Monitor all system activities and changes</p>
+          <p className="text-gray-500 mt-1">Read-only view of all system activities</p>
         </div>
-        <Button onClick={fetchLogs} variant="outline" className="font-semibold">
+        <Button onClick={fetchLogs} variant="outline" className="font-semibold border-teal-200 text-teal-600 hover:bg-teal-50">
           <RefreshCw className="w-4 h-4 mr-2" />
           Refresh
         </Button>
@@ -137,7 +137,7 @@ export default function SystemLogsPage() {
           </SelectContent>
         </Select>
         <Select value={actionFilter} onValueChange={(v) => { setActionFilter(v); setPage(1) }}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="Action" />
           </SelectTrigger>
           <SelectContent>

@@ -9,7 +9,8 @@ export default function Footer() {
   const [settings, setSettings] = useState({
     siteNameSuffix: 'Dumaguete',
     siteTitle: 'DAPA RUN',
-    site_footer_description: "Philippines' premier running event organizer. We create unforgettable race experiences that inspire and challenge runners of all levels.",
+    site_hero_heading: '',
+    site_hero_description: '',
     site_phone: '',
     site_email: '',
     site_address: '',
@@ -24,7 +25,8 @@ export default function Footer() {
           ...prev,
           siteNameSuffix: data.site_name_suffix || data.siteNameSuffix || prev.siteNameSuffix,
           siteTitle: data.siteTitle || data.site_title || prev.siteTitle,
-          site_footer_description: data.site_footer_description || data.siteFooterDescription || prev.site_footer_description,
+          site_hero_heading: data.site_hero_heading || data.siteHeroHeading || prev.site_hero_heading,
+          site_hero_description: data.site_hero_description || data.siteHeroDescription || prev.site_hero_description,
           site_phone: data.site_phone || prev.site_phone,
           site_email: data.site_email || prev.site_email,
           site_address: data.site_address || prev.site_address,
@@ -51,8 +53,13 @@ export default function Footer() {
                 <p className="text-gray-400 text-xs tracking-widest uppercase">{settings.siteNameSuffix}</p>
               </div>
             </div>
+            {settings.site_hero_heading && (
+              <p className="text-white font-semibold text-sm mb-1">
+                {settings.site_hero_heading}
+              </p>
+            )}
             <p className="text-gray-400 text-sm leading-relaxed">
-              {settings.site_footer_description}
+              {settings.site_hero_description}
             </p>
           </div>
 

@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import {
   Loader2, Save, Globe, Phone, Mail, MapPin, ImageIcon, Facebook,
-  Users, Trash2, UserPlus, Lock, Eye, EyeOff, AlertTriangle, LayoutTemplate,
+  Users, Trash2, UserPlus, Lock, Eye, EyeOff, AlertTriangle,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import ImageUpload from '@/components/ImageUpload'
@@ -56,6 +56,8 @@ export default function AdminSettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [showStaffPassword, setShowStaffPassword] = useState(false)
   const [passwordLoading, setPasswordLoading] = useState(false)
 
   const fetchSettings = async () => {
@@ -247,63 +249,8 @@ export default function AdminSettingsPage() {
               </div>
               <div className="space-y-2">
                 <Label>Hero Description</Label>
+                <p className="text-xs text-gray-500">Also displayed in the footer section</p>
                 <Textarea value={settings.site_hero_description || ''} onChange={(e) => updateSetting('site_hero_description', e.target.value)} rows={3} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Homepage Sections */}
-        <Card className="border-0 shadow-md">
-          <CardContent className="p-6 sm:p-8">
-            <div className="flex items-center gap-2 mb-4">
-              <LayoutTemplate className="w-5 h-5 text-orange-500" />
-              <h3 className="font-bold text-gray-900 text-lg">Homepage Sections</h3>
-            </div>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Featured Event Heading</Label>
-                <Input value={settings.site_featured_heading || ''} onChange={(e) => updateSetting('site_featured_heading', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Featured Event Subheading</Label>
-                <Input value={settings.site_featured_subheading || ''} onChange={(e) => updateSetting('site_featured_subheading', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Upcoming Events Heading</Label>
-                <Input value={settings.site_upcoming_heading || ''} onChange={(e) => updateSetting('site_upcoming_heading', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Upcoming Events Subheading</Label>
-                <Input value={settings.site_upcoming_subheading || ''} onChange={(e) => updateSetting('site_upcoming_subheading', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Shop Merch Heading</Label>
-                <Input value={settings.site_merch_heading || ''} onChange={(e) => updateSetting('site_merch_heading', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Shop Merch Subheading</Label>
-                <Input value={settings.site_merch_subheading || ''} onChange={(e) => updateSetting('site_merch_subheading', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Merch Banner Heading</Label>
-                <Input value={settings.site_merch_banner_heading || ''} onChange={(e) => updateSetting('site_merch_banner_heading', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Merch Banner Description</Label>
-                <Textarea value={settings.site_merch_banner_description || ''} onChange={(e) => updateSetting('site_merch_banner_description', e.target.value)} rows={3} />
-              </div>
-              <div className="space-y-2">
-                <Label>CTA Heading</Label>
-                <Input value={settings.site_cta_heading || ''} onChange={(e) => updateSetting('site_cta_heading', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>CTA Description</Label>
-                <Textarea value={settings.site_cta_description || ''} onChange={(e) => updateSetting('site_cta_description', e.target.value)} rows={3} />
-              </div>
-              <div className="space-y-2">
-                <Label>Footer Description</Label>
-                <Textarea value={settings.site_footer_description || ''} onChange={(e) => updateSetting('site_footer_description', e.target.value)} rows={3} />
               </div>
             </div>
           </CardContent>
@@ -505,12 +452,21 @@ export default function AdminSettingsPage() {
               </div>
               <div className="space-y-2">
                 <Label>Confirm New Password</Label>
-                <Input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm new password"
-                />
+                <div className="relative">
+                  <Input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
               {isAdmin && (
                 <Button
@@ -557,7 +513,21 @@ export default function AdminSettingsPage() {
             </div>
             <div className="space-y-2">
               <Label>Password</Label>
-              <Input type="password" value={staffPassword} onChange={(e) => setStaffPassword(e.target.value)} placeholder="Min. 6 characters" />
+              <div className="relative">
+                <Input
+                  type={showStaffPassword ? 'text' : 'password'}
+                  value={staffPassword}
+                  onChange={(e) => setStaffPassword(e.target.value)}
+                  placeholder="Min. 6 characters"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowStaffPassword(!showStaffPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showStaffPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
             <div className="bg-blue-50 p-3 rounded-lg">
               <p className="text-xs text-blue-700">

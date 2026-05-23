@@ -18,7 +18,6 @@ const defaults: Record<string, string> = {
   site_merch_banner_description: 'Check out our latest running gear — from professional racing shoes to performance apparel and accessories.',
   site_cta_heading: 'Ready to Run?',
   site_cta_description: "Join thousands of runners who have made DAPA RUN their go-to race organizer. Whether you're a beginner or a seasoned runner, we have an event for you.",
-  site_footer_description: "Philippines' premier running event organizer. We create unforgettable race experiences that inspire and challenge runners of all levels.",
 }
 
 function snakeToCamel(str: string): string {
@@ -64,7 +63,6 @@ export async function GET() {
       site_merch_banner_description: 'Check out our latest running gear — from professional racing shoes to performance apparel and accessories.',
       site_cta_heading: 'Ready to Run?',
       site_cta_description: "Join thousands of runners who have made DAPA RUN their go-to race organizer. Whether you're a beginner or a seasoned runner, we have an event for you.",
-      site_footer_description: "Philippines' premier running event organizer. We create unforgettable race experiences that inspire and challenge runners of all levels.",
     })
   }
 }

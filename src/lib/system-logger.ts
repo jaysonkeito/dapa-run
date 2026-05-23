@@ -10,8 +10,9 @@ type LogAction =
   | 'CREATE_USER' | 'UPDATE_USER' | 'DELETE_USER'
   | 'CHANGE_PASSWORD'
   | 'CREATE_RESULT' | 'UPDATE_RESULT' | 'DELETE_RESULT'
+  | 'DEVELOPER_UPDATE_SETTINGS' | 'DEVELOPER_UPDATE_USER' | 'DEVELOPER_UPDATE_EVENT' | 'DEVELOPER_UPDATE_MERCH'
 
-type LogCategory = 'events' | 'inventory' | 'pos' | 'registrations' | 'users' | 'settings' | 'auth' | 'results'
+type LogCategory = 'events' | 'inventory' | 'pos' | 'registrations' | 'users' | 'settings' | 'auth' | 'results' | 'developer'
 
 interface LogEntry {
   action: LogAction
