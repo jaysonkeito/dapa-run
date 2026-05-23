@@ -272,7 +272,7 @@ export default function AdminEventsPage() {
     : events.filter((e) => e.status === statusFilter)
 
   const handleGenerateReport = () => {
-    const headers = ['Title', 'Race Date', 'Location', 'Status', 'Base Price', 'Finisher Shirt Price', 'Singlet Price', 'Registration Close Date', 'Total Registrations']
+    const headers = ['Title', 'Race Date', 'Location', 'Status', 'Registration Fee', 'Finisher Shirt Price', 'Singlet Price', 'Registration Close Date', 'Total Registrations']
     const rows = events.map((e) => [
       e.title,
       e.date,
