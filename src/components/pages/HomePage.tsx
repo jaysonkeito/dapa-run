@@ -82,7 +82,20 @@ export default function HomePage() {
     ...e,
     distances: e.distances.join(','),
   })))
-  const [siteSettings, setSiteSettings] = useState({ heroHeading: 'Run With Purpose', heroDescription: "Philippines' premier running event organizer. From fun runs to ultra marathons, we create unforgettable race experiences that challenge and inspire runners of all levels." })
+  const [siteSettings, setSiteSettings] = useState({
+    heroHeading: '',
+    heroDescription: '',
+    featuredHeading: 'Featured Event',
+    featuredSubheading: "Don't miss our upcoming race",
+    upcomingHeading: 'Upcoming Events',
+    upcomingSubheading: 'Find your next race',
+    merchHeading: 'Shop Merch',
+    merchSubheading: 'Gear up for your next run',
+    merchBannerHeading: 'New Collection Available',
+    merchBannerDescription: 'Check out our latest running gear — from professional racing shoes to performance apparel and accessories.',
+    ctaHeading: 'Ready to Run?',
+    ctaDescription: "Join thousands of runners who have made DAPA RUN their go-to race organizer. Whether you're a beginner or a seasoned runner, we have an event for you.",
+  })
 
   useEffect(() => {
     async function fetchEvents() {
@@ -105,8 +118,18 @@ export default function HomePage() {
       .then(data => {
         setSiteSettings(prev => ({
           ...prev,
-          heroHeading: data.site_hero_heading || data.heroHeading || prev.heroHeading,
-          heroDescription: data.site_hero_description || data.heroDescription || prev.heroDescription,
+          heroHeading: data.site_hero_heading || data.heroHeading || '',
+          heroDescription: data.site_hero_description || data.heroDescription || '',
+          featuredHeading: data.site_featured_heading || data.siteFeaturedHeading || prev.featuredHeading,
+          featuredSubheading: data.site_featured_subheading || data.siteFeaturedSubheading || prev.featuredSubheading,
+          upcomingHeading: data.site_upcoming_heading || data.siteUpcomingHeading || prev.upcomingHeading,
+          upcomingSubheading: data.site_upcoming_subheading || data.siteUpcomingSubheading || prev.upcomingSubheading,
+          merchHeading: data.site_merch_heading || data.siteMerchHeading || prev.merchHeading,
+          merchSubheading: data.site_merch_subheading || data.siteMerchSubheading || prev.merchSubheading,
+          merchBannerHeading: data.site_merch_banner_heading || data.siteMerchBannerHeading || prev.merchBannerHeading,
+          merchBannerDescription: data.site_merch_banner_description || data.siteMerchBannerDescription || prev.merchBannerDescription,
+          ctaHeading: data.site_cta_heading || data.siteCtaHeading || prev.ctaHeading,
+          ctaDescription: data.site_cta_description || data.siteCtaDescription || prev.ctaDescription,
         }))
       })
       .catch(() => {})
@@ -191,8 +214,8 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Featured Event</h2>
-              <p className="text-gray-500 mt-1">Don&apos;t miss our upcoming race</p>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">{siteSettings.featuredHeading}</h2>
+              <p className="text-gray-500 mt-1">{siteSettings.featuredSubheading}</p>
             </div>
             <Button
               variant="ghost"
@@ -287,8 +310,8 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Upcoming Events</h2>
-              <p className="text-gray-500 mt-1">Find your next race</p>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">{siteSettings.upcomingHeading}</h2>
+              <p className="text-gray-500 mt-1">{siteSettings.upcomingSubheading}</p>
             </div>
             <Button
               variant="ghost"
@@ -357,8 +380,8 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Shop Merch</h2>
-              <p className="text-gray-500 mt-1">Gear up for your next run</p>
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">{siteSettings.merchHeading}</h2>
+              <p className="text-gray-500 mt-1">{siteSettings.merchSubheading}</p>
             </div>
             <Button
               variant="ghost"
@@ -376,10 +399,10 @@ export default function HomePage() {
             />
             <div className="relative">
               <h3 className="text-2xl sm:text-3xl font-bold text-white mb-3">
-                New Collection Available
+                {siteSettings.merchBannerHeading}
               </h3>
               <p className="text-gray-300 mb-6 max-w-lg">
-                Check out our latest running gear — from professional racing shoes to performance apparel and accessories.
+                {siteSettings.merchBannerDescription}
               </p>
               <Button
                 onClick={() => setCurrentPage('merchandise')}
@@ -398,10 +421,10 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto">
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
-              Ready to Run?
+              {siteSettings.ctaHeading}
             </h2>
             <p className="text-gray-500 mb-8">
-              Join thousands of runners who have made DAPA RUN their go-to race organizer. Whether you&apos;re a beginner or a seasoned runner, we have an event for you.
+              {siteSettings.ctaDescription}
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Button

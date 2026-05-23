@@ -1,10 +1,40 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useStore } from '@/store/useStore'
 import { upcomingEvents } from '@/lib/data'
 
 export default function Footer() {
   const { setCurrentPage } = useStore()
+  const [settings, setSettings] = useState({
+    siteNameSuffix: 'Dumaguete',
+    siteTitle: 'DAPA RUN',
+    site_footer_description: "Philippines' premier running event organizer. We create unforgettable race experiences that inspire and challenge runners of all levels.",
+    site_phone: '',
+    site_email: '',
+    site_address: '',
+    site_facebook: '',
+  })
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then((r) => r.json())
+      .then((data) => {
+        setSettings((prev) => ({
+          ...prev,
+          siteNameSuffix: data.site_name_suffix || data.siteNameSuffix || prev.siteNameSuffix,
+          siteTitle: data.siteTitle || data.site_title || prev.siteTitle,
+          site_footer_description: data.site_footer_description || data.siteFooterDescription || prev.site_footer_description,
+          site_phone: data.site_phone || prev.site_phone,
+          site_email: data.site_email || prev.site_email,
+          site_address: data.site_address || prev.site_address,
+          site_facebook: data.site_facebook || prev.site_facebook,
+        }))
+      })
+      .catch(() => { /* use defaults */ })
+  }, [])
+
+  const currentYear = new Date().getFullYear()
 
   return (
     <footer className="bg-gray-900 text-white mt-auto">
@@ -18,11 +48,11 @@ export default function Footer() {
               </div>
               <div>
                 <h3 className="text-xl font-bold">DAPA RUN</h3>
-                <p className="text-gray-400 text-xs tracking-widest uppercase">Run With Purpose</p>
+                <p className="text-gray-400 text-xs tracking-widest uppercase">{settings.siteNameSuffix}</p>
               </div>
             </div>
             <p className="text-gray-400 text-sm leading-relaxed">
-              Philippines&apos; premier running event organizer. We create unforgettable race experiences that inspire and challenge runners of all levels.
+              {settings.site_footer_description}
             </p>
           </div>
 
@@ -70,22 +100,23 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold text-sm uppercase tracking-wider text-orange-400 mb-4">Contact</h4>
             <ul className="space-y-2 text-sm text-gray-400">
-              <li>0975 180 8990</li>
-              <li>hello@daparun.com</li>
-              <li>Banilad, Dumaguete City</li>
-              <li>6200 Negros Oriental</li>
+              {settings.site_phone && <li>{settings.site_phone}</li>}
+              {settings.site_email && <li>{settings.site_email}</li>}
+              {settings.site_address && <li>{settings.site_address}</li>}
             </ul>
-            <div className="flex gap-3 mt-4">
-              <a href="https://web.facebook.com/blackandblues.eshop" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-gray-800 hover:bg-orange-500 flex items-center justify-center text-gray-400 hover:text-white text-xs font-bold cursor-pointer transition-all">
-                FB
-              </a>
-            </div>
+            {settings.site_facebook && (
+              <div className="flex gap-3 mt-4">
+                <a href={settings.site_facebook} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-gray-800 hover:bg-orange-500 flex items-center justify-center text-gray-400 hover:text-white text-xs font-bold cursor-pointer transition-all">
+                  FB
+                </a>
+              </div>
+            )}
           </div>
         </div>
 
         <div className="border-t border-gray-800 mt-8 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-gray-500 text-sm">
-            © 2026 DAPA RUN. All rights reserved.
+            © {currentYear} {settings.siteTitle}. All rights reserved.
           </p>
           <div className="flex gap-6 text-sm text-gray-500">
             <span className="hover:text-orange-400 cursor-pointer transition-colors">Privacy Policy</span>

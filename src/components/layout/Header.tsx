@@ -32,7 +32,8 @@ export default function Header() {
   const count = cartCount()
   const [scrolled, setScrolled] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [siteSettings, setSiteSettings] = useState({ siteTagline: 'Dumaguete', siteTitle: 'DAPA RUN - Dumaguete' })
+  const [siteSettings, setSiteSettings] = useState({ siteNameSuffix: 'Dumaguete', siteTitle: 'DAPA RUN - Dumaguete' })
+  const [contactSettings, setContactSettings] = useState({ site_phone: '', site_email: '', site_address: '', site_maps_embed: '', site_facebook: '' })
 
   useEffect(() => {
     setMounted(true)
@@ -44,8 +45,16 @@ export default function Header() {
       .then((data) => {
         setSiteSettings((prev) => ({
           ...prev,
-          siteTagline: data.siteTagline || data.site_tagline || prev.siteTagline,
+          siteNameSuffix: data.site_name_suffix || data.siteNameSuffix || prev.siteNameSuffix,
           siteTitle: data.siteTitle || data.site_title || prev.siteTitle,
+        }))
+        setContactSettings((prev) => ({
+          ...prev,
+          site_phone: data.site_phone || prev.site_phone,
+          site_email: data.site_email || prev.site_email,
+          site_address: data.site_address || prev.site_address,
+          site_maps_embed: data.site_maps_embed || data.siteMapsEmbed || prev.site_maps_embed,
+          site_facebook: data.site_facebook || prev.site_facebook,
         }))
       })
       .catch(() => { /* use default */ })
@@ -91,7 +100,7 @@ export default function Header() {
                     DAPA RUN
                   </span>
                   <span className="text-[10px] sm:text-xs text-gray-400 font-medium tracking-widest uppercase -mt-1">
-                    {siteSettings.siteTagline}
+                    {siteSettings.siteNameSuffix}
                   </span>
                 </div>
               </button>
@@ -180,7 +189,7 @@ export default function Header() {
                           </div>
                           <div>
                             <h2 className="text-white font-bold text-lg">DAPA RUN</h2>
-                            <p className="text-white/70 text-xs">{siteSettings.siteTagline}</p>
+                            <p className="text-white/70 text-xs">{siteSettings.siteNameSuffix}</p>
                           </div>
                         </div>
                       </div>
@@ -348,37 +357,47 @@ export default function Header() {
                 </div>
               </div>
               <div className="p-6 space-y-4">
-                <div className="bg-orange-50 rounded-xl p-4">
-                  <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-1">Phone</p>
-                  <p className="text-gray-900 font-semibold">0975 180 8990</p>
-                </div>
-                <div className="bg-orange-50 rounded-xl p-4">
-                  <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-1">Email</p>
-                  <p className="text-gray-900 font-semibold">hello@daparun.com</p>
-                </div>
-                <div className="bg-orange-50 rounded-xl p-4">
-                  <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-1">Address</p>
-                  <p className="text-gray-900 font-semibold">Banilad near Hermenegilda Elementary School, Banilad, Dumaguete City, 6200 Negros Oriental</p>
-                </div>
-                <div className="bg-orange-50 rounded-xl p-4 overflow-hidden">
-                  <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-1">Location Map</p>
-                  <iframe
-                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3937.6232526055946!2d123.28512887478401!3d9.277915190793685!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33ab69e8768b6da1%3A0xe1685f0a9af77fe2!2sDapa%20Dumaguete!5e0!3m2!1sen!2sph!4v1779392361642!5m2!1sen!2sph"
-                    width="100%"
-                    height="150"
-                    style={{ border: 0 }}
-                    allowFullScreen
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    className="rounded-lg mt-2"
-                  />
-                </div>
-                <div className="bg-orange-50 rounded-xl p-4">
-                  <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-1">Social Media</p>
-                  <div className="flex gap-3 mt-2">
-                    <a href="https://web.facebook.com/blackandblues.eshop" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold hover:bg-orange-600 transition-colors">FB</a>
+                {contactSettings.site_phone && (
+                  <div className="bg-orange-50 rounded-xl p-4">
+                    <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-1">Phone</p>
+                    <p className="text-gray-900 font-semibold">{contactSettings.site_phone}</p>
                   </div>
-                </div>
+                )}
+                {contactSettings.site_email && (
+                  <div className="bg-orange-50 rounded-xl p-4">
+                    <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-1">Email</p>
+                    <p className="text-gray-900 font-semibold">{contactSettings.site_email}</p>
+                  </div>
+                )}
+                {contactSettings.site_address && (
+                  <div className="bg-orange-50 rounded-xl p-4">
+                    <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-1">Address</p>
+                    <p className="text-gray-900 font-semibold">{contactSettings.site_address}</p>
+                  </div>
+                )}
+                {contactSettings.site_maps_embed && (
+                  <div className="bg-orange-50 rounded-xl p-4 overflow-hidden">
+                    <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-1">Location Map</p>
+                    <iframe
+                      src={contactSettings.site_maps_embed}
+                      width="100%"
+                      height="150"
+                      style={{ border: 0 }}
+                      allowFullScreen
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      className="rounded-lg mt-2"
+                    />
+                  </div>
+                )}
+                {contactSettings.site_facebook && (
+                  <div className="bg-orange-50 rounded-xl p-4">
+                    <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-1">Social Media</p>
+                    <div className="flex gap-3 mt-2">
+                      <a href={contactSettings.site_facebook} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold hover:bg-orange-600 transition-colors">FB</a>
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>

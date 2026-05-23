@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import {
   Loader2, Save, Globe, Phone, Mail, MapPin, ImageIcon, Facebook,
-  Users, Trash2, UserPlus, Lock, Eye, EyeOff, AlertTriangle,
+  Users, Trash2, UserPlus, Lock, Eye, EyeOff, AlertTriangle, LayoutTemplate,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import ImageUpload from '@/components/ImageUpload'
@@ -233,8 +233,9 @@ export default function AdminSettingsPage() {
                 <Input value={settings.site_title || ''} onChange={(e) => updateSetting('site_title', e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Site Tagline</Label>
-                <Input value={settings.site_tagline || ''} onChange={(e) => updateSetting('site_tagline', e.target.value)} />
+                <Label>Brand Name Suffix</Label>
+                <p className="text-xs text-gray-500">Text displayed below DAPA RUN (e.g., Dumaguete, Bayawan)</p>
+                <Input value={settings.site_name_suffix || ''} onChange={(e) => updateSetting('site_name_suffix', e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Site Description</Label>
@@ -242,11 +243,67 @@ export default function AdminSettingsPage() {
               </div>
               <div className="space-y-2">
                 <Label>Hero Heading</Label>
-                <Input value={settings.site_hero_heading || ''} onChange={(e) => updateSetting('site_hero_heading', e.target.value)} placeholder="Run With Purpose" />
+                <Input value={settings.site_hero_heading || ''} onChange={(e) => updateSetting('site_hero_heading', e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Hero Description</Label>
-                <Textarea value={settings.site_hero_description || ''} onChange={(e) => updateSetting('site_hero_description', e.target.value)} rows={3} placeholder="Philippines' premier running event organizer..." />
+                <Textarea value={settings.site_hero_description || ''} onChange={(e) => updateSetting('site_hero_description', e.target.value)} rows={3} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Homepage Sections */}
+        <Card className="border-0 shadow-md">
+          <CardContent className="p-6 sm:p-8">
+            <div className="flex items-center gap-2 mb-4">
+              <LayoutTemplate className="w-5 h-5 text-orange-500" />
+              <h3 className="font-bold text-gray-900 text-lg">Homepage Sections</h3>
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Featured Event Heading</Label>
+                <Input value={settings.site_featured_heading || ''} onChange={(e) => updateSetting('site_featured_heading', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Featured Event Subheading</Label>
+                <Input value={settings.site_featured_subheading || ''} onChange={(e) => updateSetting('site_featured_subheading', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Upcoming Events Heading</Label>
+                <Input value={settings.site_upcoming_heading || ''} onChange={(e) => updateSetting('site_upcoming_heading', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Upcoming Events Subheading</Label>
+                <Input value={settings.site_upcoming_subheading || ''} onChange={(e) => updateSetting('site_upcoming_subheading', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Shop Merch Heading</Label>
+                <Input value={settings.site_merch_heading || ''} onChange={(e) => updateSetting('site_merch_heading', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Shop Merch Subheading</Label>
+                <Input value={settings.site_merch_subheading || ''} onChange={(e) => updateSetting('site_merch_subheading', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Merch Banner Heading</Label>
+                <Input value={settings.site_merch_banner_heading || ''} onChange={(e) => updateSetting('site_merch_banner_heading', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Merch Banner Description</Label>
+                <Textarea value={settings.site_merch_banner_description || ''} onChange={(e) => updateSetting('site_merch_banner_description', e.target.value)} rows={3} />
+              </div>
+              <div className="space-y-2">
+                <Label>CTA Heading</Label>
+                <Input value={settings.site_cta_heading || ''} onChange={(e) => updateSetting('site_cta_heading', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>CTA Description</Label>
+                <Textarea value={settings.site_cta_description || ''} onChange={(e) => updateSetting('site_cta_description', e.target.value)} rows={3} />
+              </div>
+              <div className="space-y-2">
+                <Label>Footer Description</Label>
+                <Textarea value={settings.site_footer_description || ''} onChange={(e) => updateSetting('site_footer_description', e.target.value)} rows={3} />
               </div>
             </div>
           </CardContent>

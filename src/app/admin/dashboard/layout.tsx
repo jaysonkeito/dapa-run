@@ -50,7 +50,7 @@ export default function AdminDashboardLayout({
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [siteSettings, setSiteSettings] = useState({ siteTagline: 'Dumaguete', siteTitle: 'DAPA RUN - Dumaguete' })
+  const [siteSettings, setSiteSettings] = useState({ siteNameSuffix: 'Dumaguete', siteTitle: 'DAPA RUN - Dumaguete' })
 
   const userRole = (session?.user as Record<string, unknown>)?.role as string | undefined
 
@@ -69,7 +69,7 @@ export default function AdminDashboardLayout({
       .then((data) => {
         setSiteSettings((prev) => ({
           ...prev,
-          siteTagline: data.siteTagline || data.site_tagline || prev.siteTagline,
+          siteNameSuffix: data.site_name_suffix || data.siteNameSuffix || prev.siteNameSuffix,
           siteTitle: data.siteTitle || data.site_title || prev.siteTitle,
         }))
       })
