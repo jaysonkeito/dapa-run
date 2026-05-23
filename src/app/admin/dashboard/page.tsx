@@ -78,6 +78,7 @@ export default function AdminDashboardPage() {
       icon: Calendar,
       color: 'from-orange-500 to-orange-600',
       bgLight: 'bg-orange-50',
+      href: '/admin/dashboard/events',
     },
     {
       title: 'Registered Users',
@@ -85,6 +86,7 @@ export default function AdminDashboardPage() {
       icon: Users,
       color: 'from-emerald-500 to-emerald-600',
       bgLight: 'bg-emerald-50',
+      href: '/admin/dashboard/users',
     },
     {
       title: 'Event Registrations',
@@ -92,6 +94,7 @@ export default function AdminDashboardPage() {
       icon: ClipboardList,
       color: 'from-blue-500 to-blue-600',
       bgLight: 'bg-blue-50',
+      href: '/admin/dashboard/registrations',
     },
     {
       title: 'Inventory Items',
@@ -99,14 +102,16 @@ export default function AdminDashboardPage() {
       icon: ShoppingBag,
       color: 'from-purple-500 to-purple-600',
       bgLight: 'bg-purple-50',
+      href: '/admin/dashboard/merchandise',
     },
     {
-      title: 'POS Sales',
+      title: 'Sales Counter',
       value: stats?.totalPOSSales ?? 0,
       subtitle: stats?.totalPOSRevenue ? `₱${stats.totalPOSRevenue.toLocaleString()} revenue` : undefined,
       icon: Monitor,
       color: 'from-cyan-500 to-cyan-600',
       bgLight: 'bg-cyan-50',
+      href: '/admin/dashboard/pos',
     },
     {
       title: 'On-site Registrations',
@@ -114,6 +119,7 @@ export default function AdminDashboardPage() {
       icon: UserPlus,
       color: 'from-rose-500 to-rose-600',
       bgLight: 'bg-rose-50',
+      href: '/admin/dashboard/onsite-registration',
     },
   ]
 
@@ -128,7 +134,7 @@ export default function AdminDashboardPage() {
         {statCards.map((card) => {
           const Icon = card.icon
           return (
-            <Card key={card.title} className="border-0 shadow-md hover:shadow-lg transition-shadow">
+            <Card key={card.title} className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer" onClick={() => window.location.href = card.href}>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -176,7 +182,7 @@ export default function AdminDashboardPage() {
                 <Monitor className="w-5 h-5 text-cyan-500" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Point of Sale</h3>
+                <h3 className="font-semibold text-gray-900">Sales Counter</h3>
                 <p className="text-sm text-gray-500">Process on-site merchandise sales</p>
               </div>
             </div>

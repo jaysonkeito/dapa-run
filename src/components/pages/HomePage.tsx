@@ -82,6 +82,7 @@ export default function HomePage() {
     ...e,
     distances: e.distances.join(','),
   })))
+  const [siteSettings, setSiteSettings] = useState({ heroHeading: 'Run With Purpose', heroDescription: "Philippines' premier running event organizer. From fun runs to ultra marathons, we create unforgettable race experiences that challenge and inspire runners of all levels." })
 
   useEffect(() => {
     async function fetchEvents() {
@@ -98,7 +99,25 @@ export default function HomePage() {
     fetchEvents()
   }, [])
 
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(r => r.json())
+      .then(data => {
+        setSiteSettings(prev => ({
+          ...prev,
+          heroHeading: data.site_hero_heading || data.heroHeading || prev.heroHeading,
+          heroDescription: data.site_hero_description || data.heroDescription || prev.heroDescription,
+        }))
+      })
+      .catch(() => {})
+  }, [])
+
   const featuredEvent = upcomingEvents[0]
+
+  // Split heading for gradient effect on last word
+  const headingWords = siteSettings.heroHeading.split(' ')
+  const lastWord = headingWords.pop() || ''
+  const firstPart = headingWords.join(' ')
 
   return (
     <div className="space-y-0">
@@ -129,8 +148,8 @@ export default function HomePage() {
               transition={{ duration: 0.6, delay: 0.1 }}
               className="text-4xl sm:text-5xl lg:text-7xl font-black text-white leading-tight mb-6"
             >
-              Run With
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-600"> Purpose</span>
+              {firstPart}{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-600">{lastWord}</span>
             </motion.h1>
             <motion.p
               initial={{ opacity: 0, y: 30 }}
@@ -138,7 +157,7 @@ export default function HomePage() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="text-lg sm:text-xl text-gray-300 leading-relaxed mb-8 max-w-2xl"
             >
-              Philippines&apos; premier running event organizer. From fun runs to ultra marathons, we create unforgettable race experiences that challenge and inspire runners of all levels.
+              {siteSettings.heroDescription}
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 30 }}

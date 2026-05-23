@@ -5,6 +5,8 @@ const defaults: Record<string, string> = {
   siteTagline: 'Dumaguete',
   siteTitle: 'DAPA RUN - Dumaguete',
   siteDescription: "Philippines' premier running event organizer",
+  site_hero_heading: 'Run With Purpose',
+  site_hero_description: "Philippines' premier running event organizer. From fun runs to ultra marathons, we create unforgettable race experiences that challenge and inspire runners of all levels.",
 }
 
 function snakeToCamel(str: string): string {
@@ -35,7 +37,9 @@ export async function GET() {
     return NextResponse.json({
       siteTagline: 'Dumaguete',
       siteTitle: 'DAPA RUN - Dumaguete',
-      siteDescription: "Philippines' premier running event organizer"
+      siteDescription: "Philippines' premier running event organizer",
+      site_hero_heading: 'Run With Purpose',
+      site_hero_description: "Philippines' premier running event organizer. From fun runs to ultra marathons, we create unforgettable race experiences that challenge and inspire runners of all levels.",
     })
   }
 }

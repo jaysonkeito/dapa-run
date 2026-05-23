@@ -237,7 +237,7 @@ export default function AdminReportsPage() {
     { title: 'Total Registrations', value: (data?.registrationsSummary.totalOnline ?? 0) + (data?.registrationsSummary.totalOnsite ?? 0), icon: ClipboardList, color: 'from-emerald-500 to-emerald-600' },
     { title: 'Total Revenue', value: formatPriceForReport(data?.summary.estimatedRevenue ?? 0), icon: DollarSign, color: 'from-purple-500 to-purple-600' },
     { title: 'Total Users', value: data?.usersSummary.totalUsers ?? 0, icon: Users, color: 'from-rose-500 to-rose-600' },
-    { title: 'POS Orders', value: data?.posSummary.totalOrders ?? 0, icon: ShoppingCart, color: 'from-cyan-500 to-cyan-600' },
+    { title: 'Sales Orders', value: data?.posSummary.totalOrders ?? 0, icon: ShoppingCart, color: 'from-cyan-500 to-cyan-600' },
     { title: 'Merch Sold', value: data?.merchandiseSummary.totalSold ?? 0, icon: Package, color: 'from-amber-500 to-amber-600' },
   ]
 
@@ -423,10 +423,10 @@ export default function AdminReportsPage() {
         <Card className="border-0 shadow-md">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-900">POS Summary</h3>
+              <h3 className="font-bold text-gray-900">Sales Summary</h3>
               <Button onClick={handlePOSReport} variant="outline" size="sm" disabled={!data}>
                 <Download className="w-3 h-3 mr-1" />
-                POS Report
+                Sales Report
               </Button>
             </div>
             <div className="space-y-3">

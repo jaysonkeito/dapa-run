@@ -44,12 +44,18 @@ export async function POST(req: NextRequest) {
     }
 
     // Server-side total amount validation
-    let computedTotal = event.basePrice
-    if (finisherShirtSize) {
-      computedTotal += event.finisherShirtPrice
-    }
-    if (singletSize) {
-      computedTotal += event.singletPrice
+    let distancePrice = event.basePrice
+    try {
+      const pricing = event.distancePricing ? JSON.parse(event.distancePricing) : {}
+      if (pricing[distance]) {
+        distancePrice = pricing[distance]
+      }
+    } catch { /* use basePrice */ }
+
+    let computedTotal = distancePrice
+    if (!event.isPackage) {
+      if (finisherShirtSize) computedTotal += event.finisherShirtPrice
+      if (singletSize) computedTotal += event.singletPrice
     }
 
     const validatedTotalAmount = typeof totalAmount === 'number' && totalAmount === computedTotal

@@ -8,11 +8,17 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
   Calendar,
   MapPin,
   Search,
   Trophy,
   ChevronRight,
+  ChevronLeft,
   Loader2,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -22,6 +28,8 @@ export default function PreviousEventsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [events, setEvents] = useState<EventData[]>(fallbackEvents)
   const [loading, setLoading] = useState(true)
+  const [calendarOpen, setCalendarOpen] = useState(false)
+  const [allEvents, setAllEvents] = useState<EventData[]>([]) // for calendar
 
   useEffect(() => {
     async function fetchEvents() {
@@ -53,6 +61,37 @@ export default function PreviousEventsPage() {
       }
     }
     fetchEvents()
+  }, [])
+
+  // Fetch ALL events (both upcoming and past) for calendar
+  useEffect(() => {
+    async function fetchAllEvents() {
+      try {
+        const [upcomingRes, pastRes] = await Promise.all([
+          fetch('/api/events?status=upcoming'),
+          fetch('/api/events?status=past')
+        ])
+        const upcoming = upcomingRes.ok ? await upcomingRes.json() : []
+        const past = pastRes.ok ? await pastRes.json() : []
+        const all = [...upcoming, ...past].map((e: Record<string, unknown>) => ({
+          id: e.id as string,
+          title: e.title as string,
+          date: e.date as string,
+          time: e.time as string,
+          location: e.location as string,
+          priceRange: e.priceRange as string,
+          image: e.image as string,
+          distances: (e.distances as string).split(','),
+          description: e.description as string,
+          status: e.status as 'upcoming' | 'past',
+          featured: e.featured as boolean,
+        }))
+        setAllEvents(all)
+      } catch (error) {
+        console.error('Failed to fetch calendar events:', error)
+      }
+    }
+    fetchAllEvents()
   }, [])
 
   const filteredEvents = events.filter((event) =>
@@ -92,17 +131,23 @@ export default function PreviousEventsPage() {
         </div>
       </section>
 
-      {/* Search */}
+      {/* Search & Calendar */}
       <section className="bg-white border-b sticky top-[120px] sm:top-[132px] z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
-              placeholder="Search past events..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                placeholder="Search past events..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Button variant="outline" onClick={() => setCalendarOpen(true)} className="flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Calendar
+            </Button>
           </div>
         </div>
       </section>
@@ -181,6 +226,118 @@ export default function PreviousEventsPage() {
           )}
         </div>
       </section>
+
+      {/* Calendar Dialog */}
+      <Dialog open={calendarOpen} onOpenChange={setCalendarOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogTitle>Events Calendar</DialogTitle>
+          <div className="mt-4">
+            <CalendarView events={allEvents} onEventClick={() => {
+              setCalendarOpen(false)
+            }} />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+function CalendarView({ events, onEventClick }: { events: EventData[], onEventClick: (e: EventData) => void }) {
+  const [currentMonth, setCurrentMonth] = useState(new Date())
+
+  const year = currentMonth.getFullYear()
+  const month = currentMonth.getMonth()
+  const firstDay = new Date(year, month, 1).getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+
+  const prevMonth = () => setCurrentMonth(new Date(year, month - 1, 1))
+  const nextMonth = () => setCurrentMonth(new Date(year, month + 1, 1))
+
+  // Parse event dates and group by date string
+  const eventsByDate: Record<string, EventData[]> = {}
+  events.forEach(event => {
+    let dateStr = ''
+    try {
+      const d = new Date(event.date)
+      if (!isNaN(d.getTime())) {
+        dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      }
+    } catch {}
+    if (!dateStr && event.date) {
+      dateStr = event.date
+    }
+    if (dateStr) {
+      if (!eventsByDate[dateStr]) eventsByDate[dateStr] = []
+      eventsByDate[dateStr].push(event)
+    }
+  })
+
+  const monthName = currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={prevMonth} className="p-2 hover:bg-gray-100 rounded-lg">
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <h3 className="text-lg font-bold text-gray-900">{monthName}</h3>
+        <button onClick={nextMonth} className="p-2 hover:bg-gray-100 rounded-lg">
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 mb-3">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-orange-500" />
+          <span className="text-xs text-gray-600">Upcoming</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-gray-400" />
+          <span className="text-xs text-gray-600">Past</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {dayNames.map(day => (
+          <div key={day} className="text-center text-xs font-medium text-gray-500 py-2">{day}</div>
+        ))}
+        {Array.from({ length: firstDay }).map((_, i) => (
+          <div key={`empty-${i}`} />
+        ))}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1
+          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+          const dayEvents = eventsByDate[dateStr] || []
+          const isToday = new Date().toDateString() === new Date(year, month, day).toDateString()
+
+          return (
+            <div
+              key={day}
+              className={`min-h-[60px] border rounded p-1 text-xs ${
+                isToday ? 'border-orange-500 bg-orange-50' : 'border-gray-200'
+              }`}
+            >
+              <div className={`font-medium ${isToday ? 'text-orange-600' : 'text-gray-700'}`}>{day}</div>
+              {dayEvents.map(event => (
+                <button
+                  key={event.id}
+                  onClick={() => onEventClick(event)}
+                  className={`w-full text-left rounded px-1 py-0.5 mt-0.5 truncate ${
+                    event.status === 'upcoming'
+                      ? 'bg-orange-500 text-white'
+                      : 'bg-gray-400 text-white'
+                  }`}
+                  title={event.title}
+                >
+                  {event.title}
+                </button>
+              ))}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

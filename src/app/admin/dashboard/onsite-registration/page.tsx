@@ -57,6 +57,8 @@ interface Event {
   singletPrice?: number
   finisherShirtSizes?: string | null
   singletSizes?: string | null
+  distancePricing?: string
+  isPackage?: boolean
 }
 
 interface OnSiteRegistration {
@@ -180,11 +182,18 @@ export default function OnSiteRegistrationPage() {
 
   // Calculate total amount
   const calculatedTotal = useMemo(() => {
-    let total = selectedEvent?.basePrice || 0
+    const pricing = selectedEvent?.distancePricing ? (() => { try { return JSON.parse(selectedEvent.distancePricing) } catch { return {} } })() : {}
+    const distancePrice = (pricing[form.distance] as number) || selectedEvent?.basePrice || 0
+
+    if (selectedEvent?.isPackage) {
+      return distancePrice
+    }
+
+    let total = distancePrice
     if (form.availFinisherShirt) total += selectedEvent?.finisherShirtPrice || 0
     if (form.availSinglet) total += selectedEvent?.singletPrice || 0
     return total
-  }, [selectedEvent, form.availFinisherShirt, form.availSinglet])
+  }, [selectedEvent, form.distance, form.availFinisherShirt, form.availSinglet])
 
   const handleRegister = async () => {
     if (!form.eventId) {
@@ -498,77 +507,115 @@ export default function OnSiteRegistrationPage() {
             </div>
           </div>
 
-          {/* Add-ons Section */}
-          {selectedEvent && ((selectedEvent.finisherShirtPrice ?? 0) > 0 || (selectedEvent.singletPrice ?? 0) > 0) && (
+          {/* Add-ons / Package Section */}
+          {selectedEvent && (
             <div className="mt-4 border rounded-lg p-4 bg-orange-50/50 space-y-4">
-              <h3 className="font-semibold text-gray-800 text-sm uppercase tracking-wider">Optional Add-ons</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Finisher Shirt */}
-                {(selectedEvent.finisherShirtPrice ?? 0) > 0 && (
-                  <div className="border rounded-lg p-3 bg-white space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          id="onsite-finisher-shirt"
-                          checked={form.availFinisherShirt}
-                          onCheckedChange={(checked) => {
-                            setForm(prev => ({ ...prev, availFinisherShirt: !!checked, finisherShirtSize: '' }))
-                          }}
-                        />
-                        <label htmlFor="onsite-finisher-shirt" className="text-sm font-medium text-gray-700 cursor-pointer">
-                          Avail Finisher Shirt
-                        </label>
-                      </div>
-                      <span className="text-sm font-semibold text-gray-900">+₱{selectedEvent.finisherShirtPrice?.toLocaleString()}</span>
-                    </div>
-                    {form.availFinisherShirt && finisherSizes.length > 0 && (
-                      <Select value={form.finisherShirtSize} onValueChange={(v) => setForm(prev => ({ ...prev, finisherShirtSize: v }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select size" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {finisherSizes.map((size) => (
-                            <SelectItem key={size} value={size}>{size}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                )}
+              <h3 className="font-semibold text-gray-800 text-sm uppercase tracking-wider">
+                {selectedEvent.isPackage ? 'Package Details' : 'Optional Add-ons'}
+              </h3>
 
-                {/* Singlet */}
-                {(selectedEvent.singletPrice ?? 0) > 0 && (
-                  <div className="border rounded-lg p-3 bg-white space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          id="onsite-singlet"
-                          checked={form.availSinglet}
-                          onCheckedChange={(checked) => {
-                            setForm(prev => ({ ...prev, availSinglet: !!checked, singletSize: '' }))
-                          }}
-                        />
-                        <label htmlFor="onsite-singlet" className="text-sm font-medium text-gray-700 cursor-pointer">
-                          Avail Singlet
-                        </label>
-                      </div>
-                      <span className="text-sm font-semibold text-gray-900">+₱{selectedEvent.singletPrice?.toLocaleString()}</span>
-                    </div>
-                    {form.availSinglet && singletSizesList.length > 0 && (
-                      <Select value={form.singletSize} onValueChange={(v) => setForm(prev => ({ ...prev, singletSize: v }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select size" />
-                        </SelectTrigger>
+              {/* Show distance price */}
+              <div className="flex items-center justify-between py-2 border-b">
+                <span className="text-sm text-gray-600">
+                  {selectedEvent.isPackage ? 'Complete Package' : 'Registration Fee'} ({form.distance})
+                </span>
+                <span className="text-sm font-semibold text-gray-900">₱{calculatedTotal.toLocaleString()}</span>
+              </div>
+
+              {selectedEvent.isPackage ? (
+                // Package: show sizes without checkboxes
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {finisherSizes.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-sm">Finisher Shirt Size</Label>
+                      <Select value={form.finisherShirtSize} onValueChange={(v) => setForm(prev => ({ ...prev, finisherShirtSize: v }))}>
+                        <SelectTrigger><SelectValue placeholder="Select size" /></SelectTrigger>
                         <SelectContent>
-                          {singletSizesList.map((size) => (
-                            <SelectItem key={size} value={size}>{size}</SelectItem>
-                          ))}
+                          {finisherSizes.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                         </SelectContent>
                       </Select>
-                    )}
-                  </div>
-                )}
-              </div>
+                    </div>
+                  )}
+                  {singletSizesList.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-sm">Race Singlet Size</Label>
+                      <Select value={form.singletSize} onValueChange={(v) => setForm(prev => ({ ...prev, singletSize: v }))}>
+                        <SelectTrigger><SelectValue placeholder="Select size" /></SelectTrigger>
+                        <SelectContent>
+                          {singletSizesList.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Standard: show add-ons with checkboxes + prices
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {(selectedEvent.finisherShirtPrice ?? 0) > 0 && (
+                    <div className="border rounded-lg p-3 bg-white space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="onsite-finisher-shirt"
+                            checked={form.availFinisherShirt}
+                            onCheckedChange={(checked) => {
+                              setForm(prev => ({ ...prev, availFinisherShirt: !!checked, finisherShirtSize: '' }))
+                            }}
+                          />
+                          <label htmlFor="onsite-finisher-shirt" className="text-sm font-medium text-gray-700 cursor-pointer">
+                            Avail Finisher Shirt
+                          </label>
+                        </div>
+                        <span className="text-sm font-semibold text-gray-900">+₱{selectedEvent.finisherShirtPrice?.toLocaleString()}</span>
+                      </div>
+                      {form.availFinisherShirt && finisherSizes.length > 0 && (
+                        <Select value={form.finisherShirtSize} onValueChange={(v) => setForm(prev => ({ ...prev, finisherShirtSize: v }))}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select size" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {finisherSizes.map((size) => (
+                              <SelectItem key={size} value={size}>{size}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
+
+                  {(selectedEvent.singletPrice ?? 0) > 0 && (
+                    <div className="border rounded-lg p-3 bg-white space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="onsite-singlet"
+                            checked={form.availSinglet}
+                            onCheckedChange={(checked) => {
+                              setForm(prev => ({ ...prev, availSinglet: !!checked, singletSize: '' }))
+                            }}
+                          />
+                          <label htmlFor="onsite-singlet" className="text-sm font-medium text-gray-700 cursor-pointer">
+                            Avail Singlet
+                          </label>
+                        </div>
+                        <span className="text-sm font-semibold text-gray-900">+₱{selectedEvent.singletPrice?.toLocaleString()}</span>
+                      </div>
+                      {form.availSinglet && singletSizesList.length > 0 && (
+                        <Select value={form.singletSize} onValueChange={(v) => setForm(prev => ({ ...prev, singletSize: v }))}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select size" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {singletSizesList.map((size) => (
+                              <SelectItem key={size} value={size}>{size}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {calculatedTotal > 0 && (
                 <div className="flex items-center justify-between py-2 px-3 bg-white rounded-lg border">

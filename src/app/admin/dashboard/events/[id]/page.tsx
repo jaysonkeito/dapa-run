@@ -65,6 +65,8 @@ interface EventDetail {
   singletPrice: number
   finisherShirtSizes: string | null
   singletSizes: string | null
+  distancePricing: string
+  isPackage: boolean
   registrations: Registration[]
   onsiteRegistrations: OnsiteReg[]
   results: RaceResult[]
@@ -303,18 +305,18 @@ export default function EventDetailPage() {
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-blue-50 rounded-lg p-4 text-center">
-              <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Base Registration</p>
+              <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Registration Fee</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">{formatPrice(event.basePrice)}</p>
             </div>
             <div className="bg-purple-50 rounded-lg p-4 text-center">
-              <p className="text-xs font-semibold text-purple-600 uppercase tracking-wider">Finisher Shirt</p>
+              <p className="text-xs font-semibold text-purple-600 uppercase tracking-wider"><span className="font-bold">Optional Add-on:</span> Finisher Shirt</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">{event.finisherShirtPrice ? formatPrice(event.finisherShirtPrice) : 'N/A'}</p>
               {event.finisherShirtSizes && (
                 <p className="text-xs text-gray-400 mt-1">Sizes: {event.finisherShirtSizes}</p>
               )}
             </div>
             <div className="bg-emerald-50 rounded-lg p-4 text-center">
-              <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Singlet</p>
+              <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider"><span className="font-bold">Optional Add-on:</span> Race Singlet</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">{event.singletPrice ? formatPrice(event.singletPrice) : 'N/A'}</p>
               {event.singletSizes && (
                 <p className="text-xs text-gray-400 mt-1">Sizes: {event.singletSizes}</p>

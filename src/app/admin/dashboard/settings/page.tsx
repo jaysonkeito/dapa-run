@@ -240,6 +240,14 @@ export default function AdminSettingsPage() {
                 <Label>Site Description</Label>
                 <Textarea value={settings.site_description || ''} onChange={(e) => updateSetting('site_description', e.target.value)} rows={3} />
               </div>
+              <div className="space-y-2">
+                <Label>Hero Heading</Label>
+                <Input value={settings.site_hero_heading || ''} onChange={(e) => updateSetting('site_hero_heading', e.target.value)} placeholder="Run With Purpose" />
+              </div>
+              <div className="space-y-2">
+                <Label>Hero Description</Label>
+                <Textarea value={settings.site_hero_description || ''} onChange={(e) => updateSetting('site_hero_description', e.target.value)} rows={3} placeholder="Philippines' premier running event organizer..." />
+              </div>
             </div>
           </CardContent>
         </Card>

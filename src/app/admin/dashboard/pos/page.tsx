@@ -92,7 +92,7 @@ function formatPrice(amount: number): string {
   return `₱${amount.toLocaleString()}`
 }
 
-export default function POSPage() {
+export default function SalesCounterPage() {
   const { data: session } = useSession()
   const { toast } = useToast()
 

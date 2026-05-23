@@ -44,6 +44,8 @@ interface EventApiData extends EventData {
   singletPrice?: number
   finisherShirtSizes?: string | null
   singletSizes?: string | null
+  distancePricing?: string
+  isPackage?: boolean
 }
 
 export default function UpcomingEventsPage() {
@@ -91,6 +93,8 @@ export default function UpcomingEventsPage() {
               singletPrice: (e.singletPrice as number) || 0,
               finisherShirtSizes: (e.finisherShirtSizes as string | null) || null,
               singletSizes: (e.singletSizes as string | null) || null,
+              distancePricing: (e.distancePricing as string) || '',
+              isPackage: (e.isPackage as boolean) || false,
             }))
             setEvents(mapped)
           }
@@ -137,11 +141,18 @@ export default function UpcomingEventsPage() {
   // Calculate total amount
   const totalAmount = useMemo(() => {
     if (!selectedEvent) return 0
-    let total = selectedEvent.basePrice || 0
+    const pricing = selectedEvent.distancePricing ? (() => { try { return JSON.parse(selectedEvent.distancePricing) } catch { return {} } })() : {}
+    const distancePrice = (pricing[regDistance] as number) || selectedEvent.basePrice || 0
+
+    if (selectedEvent.isPackage) {
+      return distancePrice // Package includes everything
+    }
+
+    let total = distancePrice
     if (availFinisherShirt) total += selectedEvent.finisherShirtPrice || 0
     if (availSinglet) total += selectedEvent.singletPrice || 0
     return total
-  }, [selectedEvent, availFinisherShirt, availSinglet])
+  }, [selectedEvent, regDistance, availFinisherShirt, availSinglet])
 
   const finisherSizes = useMemo(() => {
     if (!selectedEvent?.finisherShirtSizes) return []
@@ -156,13 +167,25 @@ export default function UpcomingEventsPage() {
   const handleRegister = async () => {
     if (!selectedEvent || !regDistance) return
 
-    if (availFinisherShirt && !finisherShirtSize) {
-      toast({ title: 'Missing Size', description: 'Please select a finisher shirt size.', variant: 'destructive' })
-      return
-    }
-    if (availSinglet && !singletSize) {
-      toast({ title: 'Missing Size', description: 'Please select a singlet size.', variant: 'destructive' })
-      return
+    // For package, sizes are included but may need selection
+    if (selectedEvent.isPackage) {
+      if (finisherSizes.length > 0 && !finisherShirtSize) {
+        toast({ title: 'Missing Size', description: 'Please select a finisher shirt size.', variant: 'destructive' })
+        return
+      }
+      if (singletSizesList.length > 0 && !singletSize) {
+        toast({ title: 'Missing Size', description: 'Please select a singlet size.', variant: 'destructive' })
+        return
+      }
+    } else {
+      if (availFinisherShirt && !finisherShirtSize) {
+        toast({ title: 'Missing Size', description: 'Please select a finisher shirt size.', variant: 'destructive' })
+        return
+      }
+      if (availSinglet && !singletSize) {
+        toast({ title: 'Missing Size', description: 'Please select a singlet size.', variant: 'destructive' })
+        return
+      }
     }
 
     setRegLoading(true)
@@ -173,8 +196,8 @@ export default function UpcomingEventsPage() {
         body: JSON.stringify({
           eventId: selectedEvent.id,
           distance: regDistance,
-          finisherShirtSize: availFinisherShirt ? finisherShirtSize : null,
-          singletSize: availSinglet ? singletSize : null,
+          finisherShirtSize: (selectedEvent.isPackage && finisherSizes.length > 0) ? finisherShirtSize : (availFinisherShirt ? finisherShirtSize : null),
+          singletSize: (selectedEvent.isPackage && singletSizesList.length > 0) ? singletSize : (availSinglet ? singletSize : null),
           totalAmount,
         }),
       })
@@ -190,6 +213,12 @@ export default function UpcomingEventsPage() {
     } finally {
       setRegLoading(false)
     }
+  }
+
+  // Get distance-specific price for display
+  const getDistancePrice = (event: EventApiData, distance: string): number => {
+    const pricing = event.distancePricing ? (() => { try { return JSON.parse(event.distancePricing) } catch { return {} } })() : {}
+    return (pricing[distance] as number) || event.basePrice || 0
   }
 
   return (
@@ -293,6 +322,11 @@ export default function UpcomingEventsPage() {
                             Featured
                           </Badge>
                         )}
+                        {event.isPackage && (
+                          <Badge className="absolute top-4 right-4 bg-emerald-500 text-white font-bold">
+                            Complete Package
+                          </Badge>
+                        )}
                         <div className="absolute bottom-4 left-4 flex gap-2">
                           {event.distances.map((d) => (
                             <Badge key={d} variant="secondary" className="bg-white/90 text-gray-800 font-semibold text-xs">
@@ -376,80 +410,120 @@ export default function UpcomingEventsPage() {
                 </div>
               </div>
 
-              {/* Base Price */}
-              {(selectedEvent.basePrice ?? 0) > 0 && (
-                <div className="flex items-center justify-between py-2 border-b">
-                  <span className="text-sm text-gray-600">Base Registration</span>
-                  <span className="text-sm font-semibold text-gray-900">₱{(selectedEvent.basePrice ?? 0).toLocaleString()}</span>
-                </div>
-              )}
-
-              {/* Finisher Shirt Add-on */}
-              {(selectedEvent.finisherShirtPrice ?? 0) > 0 && (
-                <div className="border rounded-lg p-3 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id="finisher-shirt"
-                        checked={availFinisherShirt}
-                        onCheckedChange={(checked) => {
-                          setAvailFinisherShirt(!!checked)
-                          if (!checked) setFinisherShirtSize('')
-                        }}
-                      />
-                      <label htmlFor="finisher-shirt" className="text-sm font-medium text-gray-700 cursor-pointer">
-                        Avail Finisher Shirt
-                      </label>
-                    </div>
-                    <span className="text-sm font-semibold text-gray-900">+₱{(selectedEvent.finisherShirtPrice ?? 0).toLocaleString()}</span>
+              {/* Price Display based on registration type */}
+              {selectedEvent.isPackage ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between py-2 border-b">
+                    <span className="text-sm text-gray-600">Complete Package</span>
+                    <span className="text-sm font-semibold text-gray-900">₱{totalAmount.toLocaleString()}</span>
                   </div>
-                  {availFinisherShirt && finisherSizes.length > 0 && (
-                    <Select value={finisherShirtSize} onValueChange={setFinisherShirtSize}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select size" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {finisherSizes.map((size) => (
-                          <SelectItem key={size} value={size}>{size}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <p className="text-xs text-gray-500">Includes registration, finisher shirt & race singlet</p>
+                  {/* Show size selectors directly (no checkbox needed) */}
+                  {finisherSizes.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-gray-700">Finisher Shirt Size</p>
+                      <Select value={finisherShirtSize} onValueChange={setFinisherShirtSize}>
+                        <SelectTrigger><SelectValue placeholder="Select size" /></SelectTrigger>
+                        <SelectContent>
+                          {finisherSizes.map((size) => (
+                            <SelectItem key={size} value={size}>{size}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {singletSizesList.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-gray-700">Race Singlet Size</p>
+                      <Select value={singletSize} onValueChange={setSingletSize}>
+                        <SelectTrigger><SelectValue placeholder="Select size" /></SelectTrigger>
+                        <SelectContent>
+                          {singletSizesList.map((size) => (
+                            <SelectItem key={size} value={size}>{size}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   )}
                 </div>
-              )}
-
-              {/* Singlet Add-on */}
-              {(selectedEvent.singletPrice ?? 0) > 0 && (
-                <div className="border rounded-lg p-3 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id="singlet"
-                        checked={availSinglet}
-                        onCheckedChange={(checked) => {
-                          setAvailSinglet(!!checked)
-                          if (!checked) setSingletSize('')
-                        }}
-                      />
-                      <label htmlFor="singlet" className="text-sm font-medium text-gray-700 cursor-pointer">
-                        Avail Singlet
-                      </label>
+              ) : (
+                <>
+                  {/* Registration Fee */}
+                  {(getDistancePrice(selectedEvent, regDistance) ?? 0) > 0 && (
+                    <div className="flex items-center justify-between py-2 border-b">
+                      <span className="text-sm text-gray-600">Registration Fee</span>
+                      <span className="text-sm font-semibold text-gray-900">₱{getDistancePrice(selectedEvent, regDistance).toLocaleString()}</span>
                     </div>
-                    <span className="text-sm font-semibold text-gray-900">+₱{(selectedEvent.singletPrice ?? 0).toLocaleString()}</span>
-                  </div>
-                  {availSinglet && singletSizesList.length > 0 && (
-                    <Select value={singletSize} onValueChange={setSingletSize}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select size" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {singletSizesList.map((size) => (
-                          <SelectItem key={size} value={size}>{size}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   )}
-                </div>
+
+                  {/* Finisher Shirt Add-on */}
+                  {(selectedEvent.finisherShirtPrice ?? 0) > 0 && (
+                    <div className="border rounded-lg p-3 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="finisher-shirt"
+                            checked={availFinisherShirt}
+                            onCheckedChange={(checked) => {
+                              setAvailFinisherShirt(!!checked)
+                              if (!checked) setFinisherShirtSize('')
+                            }}
+                          />
+                          <label htmlFor="finisher-shirt" className="text-sm font-medium text-gray-700 cursor-pointer">
+                            Avail Finisher Shirt
+                          </label>
+                        </div>
+                        <span className="text-sm font-semibold text-gray-900">+₱{(selectedEvent.finisherShirtPrice ?? 0).toLocaleString()}</span>
+                      </div>
+                      {availFinisherShirt && finisherSizes.length > 0 && (
+                        <Select value={finisherShirtSize} onValueChange={setFinisherShirtSize}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select size" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {finisherSizes.map((size) => (
+                              <SelectItem key={size} value={size}>{size}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Singlet Add-on */}
+                  {(selectedEvent.singletPrice ?? 0) > 0 && (
+                    <div className="border rounded-lg p-3 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="singlet"
+                            checked={availSinglet}
+                            onCheckedChange={(checked) => {
+                              setAvailSinglet(!!checked)
+                              if (!checked) setSingletSize('')
+                            }}
+                          />
+                          <label htmlFor="singlet" className="text-sm font-medium text-gray-700 cursor-pointer">
+                            Avail Singlet
+                          </label>
+                        </div>
+                        <span className="text-sm font-semibold text-gray-900">+₱{(selectedEvent.singletPrice ?? 0).toLocaleString()}</span>
+                      </div>
+                      {availSinglet && singletSizesList.length > 0 && (
+                        <Select value={singletSize} onValueChange={setSingletSize}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select size" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {singletSizesList.map((size) => (
+                              <SelectItem key={size} value={size}>{size}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Total Amount */}

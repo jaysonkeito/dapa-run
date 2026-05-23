@@ -63,6 +63,8 @@ interface Event {
   singletPrice: number
   finisherShirtSizes: string | null
   singletSizes: string | null
+  distancePricing: string
+  isPackage: boolean
   _count?: { registrations: number }
 }
 
@@ -84,6 +86,8 @@ const emptyEvent = {
   singletPrice: 0,
   finisherShirtSizes: '',
   singletSizes: '',
+  distancePricing: '',
+  isPackage: false,
 }
 
 const standardShirtSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL']
@@ -113,16 +117,32 @@ export default function AdminEventsPage() {
 
   // Auto-calculate price range
   useEffect(() => {
-    if (form.basePrice > 0) {
-      const maxTotal = form.basePrice + (form.finisherShirtPrice || 0) + (form.singletPrice || 0)
-      setForm(prev => ({
-        ...prev,
-        priceRange: `₱${form.basePrice.toLocaleString()} – ₱${maxTotal.toLocaleString()}`
-      }))
+    const pricing = form.distancePricing ? (() => { try { return JSON.parse(form.distancePricing) } catch { return {} } })() : {}
+    const distPrices = Object.values(pricing) as number[]
+
+    if (form.isPackage) {
+      // Package: min distance price to max distance price
+      if (distPrices.length > 0 && distPrices.some(p => p > 0)) {
+        const minPrice = Math.min(...distPrices.filter(p => p > 0))
+        const maxPrice = Math.max(...distPrices)
+        setForm(prev => ({ ...prev, priceRange: `₱${minPrice.toLocaleString()} – ₱${maxPrice.toLocaleString()}` }))
+      } else if (form.basePrice > 0) {
+        setForm(prev => ({ ...prev, priceRange: `₱${form.basePrice.toLocaleString()}` }))
+      } else {
+        setForm(prev => ({ ...prev, priceRange: '' }))
+      }
     } else {
-      setForm(prev => ({ ...prev, priceRange: '' }))
+      // Standard: registration fee to registration fee + all add-ons
+      const minBase = distPrices.length > 0 && distPrices.some(p => p > 0) ? Math.min(...distPrices.filter(p => p > 0)) : form.basePrice
+      const maxBase = distPrices.length > 0 && distPrices.some(p => p > 0) ? Math.max(...distPrices) : form.basePrice
+      if (minBase > 0) {
+        const maxTotal = maxBase + (form.finisherShirtPrice || 0) + (form.singletPrice || 0)
+        setForm(prev => ({ ...prev, priceRange: `₱${minBase.toLocaleString()} – ₱${maxTotal.toLocaleString()}` }))
+      } else {
+        setForm(prev => ({ ...prev, priceRange: '' }))
+      }
     }
-  }, [form.basePrice, form.finisherShirtPrice, form.singletPrice])
+  }, [form.basePrice, form.finisherShirtPrice, form.singletPrice, form.distancePricing, form.isPackage])
 
   const fetchEvents = async () => {
     try {
@@ -195,6 +215,8 @@ export default function AdminEventsPage() {
       singletPrice: event.singletPrice || 0,
       finisherShirtSizes: event.finisherShirtSizes || '',
       singletSizes: event.singletSizes || '',
+      distancePricing: event.distancePricing || '',
+      isPackage: event.isPackage || false,
     })
     setDialogOpen(true)
   }
@@ -460,6 +482,9 @@ export default function AdminEventsPage() {
                         {event.featured && (
                           <Badge className="ml-2 bg-orange-500 text-white text-[10px]">Featured</Badge>
                         )}
+                        {event.isPackage && (
+                          <Badge className="ml-2 bg-emerald-500 text-white text-[10px]">Package</Badge>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-sm text-gray-600">{event.date}</TableCell>
@@ -470,7 +495,7 @@ export default function AdminEventsPage() {
                         {event.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-sm text-gray-600">{event.basePrice ? `₱${event.basePrice.toLocaleString()}` : '-'}</TableCell>
+                    <TableCell className="text-sm text-gray-600">{event.priceRange || (event.basePrice ? `₱${event.basePrice.toLocaleString()}` : '-')}</TableCell>
                     <TableCell className="text-sm text-gray-600">{event._count?.registrations ?? 0}</TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1">
@@ -546,107 +571,285 @@ export default function AdminEventsPage() {
             {/* Registration Pricing */}
             <div className="border rounded-lg p-4 bg-orange-50">
               <p className="text-sm font-semibold text-orange-700 mb-3">Registration Pricing</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Registration Fee (₱)</Label>
-                  <Input type="number" value={form.basePrice} onChange={(e) => setForm({ ...form, basePrice: Number(e.target.value) })} placeholder="500" />
-                </div>
-                <div className="space-y-2">
-                  <Label><span className="font-bold text-orange-700">Optional Add-on:</span> Finisher Shirt (₱)</Label>
-                  <Input type="number" value={form.finisherShirtPrice} onChange={(e) => setForm({ ...form, finisherShirtPrice: Number(e.target.value) })} placeholder="500" />
-                </div>
-                <div className="space-y-2">
-                  <Label><span className="font-bold text-orange-700">Optional Add-on:</span> Race Singlet (₱)</Label>
-                  <Input type="number" value={form.singletPrice} onChange={(e) => setForm({ ...form, singletPrice: Number(e.target.value) })} placeholder="500" />
-                </div>
+
+              {/* Registration Type Toggle */}
+              <div className="flex items-center gap-4 mb-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="regType"
+                    checked={!form.isPackage}
+                    onChange={() => setForm({ ...form, isPackage: false })}
+                    className="text-orange-500"
+                  />
+                  <span className="text-sm font-medium">Standard Registration</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="regType"
+                    checked={form.isPackage}
+                    onChange={() => setForm({ ...form, isPackage: true })}
+                    className="text-orange-500"
+                  />
+                  <span className="text-sm font-medium">Complete Package</span>
+                </label>
               </div>
 
-              {/* Finisher Shirt Sizes */}
-              <div className="mt-4">
-                <div className="space-y-2">
-                  <Label>Finisher Shirt Sizes</Label>
-                  <div className="border rounded-lg p-3 bg-white space-y-2">
-                    <div className="flex flex-wrap gap-2">
-                      {standardShirtSizes.map((size) => (
-                        <label key={size} className="flex items-center gap-1.5 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={finisherShirtSelectedSizes.includes(size)}
-                            onChange={() => toggleFinisherShirtSize(size)}
-                            className="rounded border-gray-300"
-                          />
-                          <span className="text-sm">{size}</span>
-                        </label>
-                      ))}
+              {!form.isPackage ? (
+                <>
+                  {/* Standard Registration */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Registration Fee (₱)</Label>
+                      <Input type="number" value={form.basePrice} onChange={(e) => setForm({ ...form, basePrice: Number(e.target.value) })} placeholder="500" />
                     </div>
-                    <div className="flex items-center gap-2 pt-1 border-t">
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={finisherShirtSelectedSizes.includes('Other')}
-                          onChange={(e) => handleFinisherShirtOtherCheck(e.target.checked)}
-                          className="rounded border-gray-300"
-                        />
-                        <span className="text-sm font-medium">Other</span>
-                      </label>
-                      {finisherShirtSelectedSizes.includes('Other') && (
-                        <Input
-                          value={finisherShirtOtherSize}
-                          onChange={(e) => handleFinisherShirtOtherText(e.target.value)}
-                          placeholder="Enter custom size"
-                          className="flex-1 h-8 text-sm"
-                        />
-                      )}
+                    <div className="space-y-2">
+                      <Label><span className="font-bold text-orange-700">Optional Add-on:</span> Finisher Shirt (₱)</Label>
+                      <Input type="number" value={form.finisherShirtPrice} onChange={(e) => setForm({ ...form, finisherShirtPrice: Number(e.target.value) })} placeholder="500" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label><span className="font-bold text-orange-700">Optional Add-on:</span> Race Singlet (₱)</Label>
+                      <Input type="number" value={form.singletPrice} onChange={(e) => setForm({ ...form, singletPrice: Number(e.target.value) })} placeholder="500" />
                     </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Singlet Sizes */}
-              <div className="mt-4">
-                <div className="space-y-2">
-                  <Label>Race Singlet Sizes</Label>
-                  <div className="border rounded-lg p-3 bg-white space-y-2">
-                    <div className="flex flex-wrap gap-2">
-                      {standardShirtSizes.map((size) => (
-                        <label key={size} className="flex items-center gap-1.5 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={singletSelectedSizes.includes(size)}
-                            onChange={() => toggleSingletSize(size)}
-                            className="rounded border-gray-300"
-                          />
-                          <span className="text-sm">{size}</span>
-                        </label>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-2 pt-1 border-t">
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={singletSelectedSizes.includes('Other')}
-                          onChange={(e) => handleSingletOtherCheck(e.target.checked)}
-                          className="rounded border-gray-300"
-                        />
-                        <span className="text-sm font-medium">Other</span>
-                      </label>
-                      {singletSelectedSizes.includes('Other') && (
-                        <Input
-                          value={singletOtherSize}
-                          onChange={(e) => handleSingletOtherText(e.target.value)}
-                          placeholder="Enter custom size"
-                          className="flex-1 h-8 text-sm"
-                        />
-                      )}
+                  {/* Distance Pricing for Standard */}
+                  <div className="mt-4 border-t pt-4">
+                    <p className="text-sm font-semibold text-orange-700 mb-2">Distance Pricing</p>
+                    <p className="text-xs text-gray-500 mb-3">Set the registration fee for each distance. If left empty, the default fee will be used.</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {selectedDistances.filter(d => d !== 'Other').map((dist) => {
+                        const pricing = form.distancePricing ? (() => { try { return JSON.parse(form.distancePricing) } catch { return {} } })() : {}
+                        return (
+                          <div key={dist} className="space-y-1">
+                            <Label className="text-xs">{dist} Fee (₱)</Label>
+                            <Input
+                              type="number"
+                              value={pricing[dist] || ''}
+                              onChange={(e) => {
+                                const newPricing = { ...pricing, [dist]: Number(e.target.value) || 0 }
+                                setForm({ ...form, distancePricing: JSON.stringify(newPricing) })
+                              }}
+                              placeholder={String(form.basePrice || 0)}
+                            />
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
-                </div>
-              </div>
 
-              {form.basePrice > 0 && (
-                <p className="text-xs text-orange-600 mt-3 font-medium">
-                  Max total: ₱{([form.basePrice, form.finisherShirtPrice, form.singletPrice].reduce((a, b) => a + b, 0)).toLocaleString()} (with all add-ons)
-                </p>
+                  {/* Finisher Shirt Sizes */}
+                  <div className="mt-4">
+                    <div className="space-y-2">
+                      <Label>Finisher Shirt Sizes</Label>
+                      <div className="border rounded-lg p-3 bg-white space-y-2">
+                        <div className="flex flex-wrap gap-2">
+                          {standardShirtSizes.map((size) => (
+                            <label key={size} className="flex items-center gap-1.5 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={finisherShirtSelectedSizes.includes(size)}
+                                onChange={() => toggleFinisherShirtSize(size)}
+                                className="rounded border-gray-300"
+                              />
+                              <span className="text-sm">{size}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2 pt-1 border-t">
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={finisherShirtSelectedSizes.includes('Other')}
+                              onChange={(e) => handleFinisherShirtOtherCheck(e.target.checked)}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium">Other</span>
+                          </label>
+                          {finisherShirtSelectedSizes.includes('Other') && (
+                            <Input
+                              value={finisherShirtOtherSize}
+                              onChange={(e) => handleFinisherShirtOtherText(e.target.value)}
+                              placeholder="Enter custom size"
+                              className="flex-1 h-8 text-sm"
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Singlet Sizes */}
+                  <div className="mt-4">
+                    <div className="space-y-2">
+                      <Label>Race Singlet Sizes</Label>
+                      <div className="border rounded-lg p-3 bg-white space-y-2">
+                        <div className="flex flex-wrap gap-2">
+                          {standardShirtSizes.map((size) => (
+                            <label key={size} className="flex items-center gap-1.5 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={singletSelectedSizes.includes(size)}
+                                onChange={() => toggleSingletSize(size)}
+                                className="rounded border-gray-300"
+                              />
+                              <span className="text-sm">{size}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2 pt-1 border-t">
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={singletSelectedSizes.includes('Other')}
+                              onChange={(e) => handleSingletOtherCheck(e.target.checked)}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium">Other</span>
+                          </label>
+                          {singletSelectedSizes.includes('Other') && (
+                            <Input
+                              value={singletOtherSize}
+                              onChange={(e) => handleSingletOtherText(e.target.value)}
+                              placeholder="Enter custom size"
+                              className="flex-1 h-8 text-sm"
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {form.basePrice > 0 && (
+                    <p className="text-xs text-orange-600 mt-3 font-medium">
+                      Max total: ₱{([form.basePrice, form.finisherShirtPrice, form.singletPrice].reduce((a, b) => a + b, 0)).toLocaleString()} (with all add-ons)
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* Complete Package */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Package Fee (₱)</Label>
+                      <Input type="number" value={form.basePrice} onChange={(e) => setForm({ ...form, basePrice: Number(e.target.value) })} placeholder="500" />
+                    </div>
+                  </div>
+
+                  {/* Distance Pricing for Package */}
+                  <div className="mt-4 border-t pt-4">
+                    <p className="text-sm font-semibold text-orange-700 mb-2">Distance Pricing</p>
+                    <p className="text-xs text-gray-500 mb-3">Set the package fee for each distance. If left empty, the default fee will be used.</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {selectedDistances.filter(d => d !== 'Other').map((dist) => {
+                        const pricing = form.distancePricing ? (() => { try { return JSON.parse(form.distancePricing) } catch { return {} } })() : {}
+                        return (
+                          <div key={dist} className="space-y-1">
+                            <Label className="text-xs">{dist} Package (₱)</Label>
+                            <Input
+                              type="number"
+                              value={pricing[dist] || ''}
+                              onChange={(e) => {
+                                const newPricing = { ...pricing, [dist]: Number(e.target.value) || 0 }
+                                setForm({ ...form, distancePricing: JSON.stringify(newPricing) })
+                              }}
+                              placeholder={String(form.basePrice || 0)}
+                            />
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Included Sizes (no prices) */}
+                  <div className="mt-4 border-t pt-4">
+                    <p className="text-sm font-semibold text-orange-700 mb-2">Included Sizes</p>
+                    <p className="text-xs text-gray-500 mb-3">Select available sizes for items included in the package.</p>
+                  </div>
+
+                  {/* Finisher Shirt Sizes */}
+                  <div className="mt-4">
+                    <div className="space-y-2">
+                      <Label>Finisher Shirt Sizes</Label>
+                      <div className="border rounded-lg p-3 bg-white space-y-2">
+                        <div className="flex flex-wrap gap-2">
+                          {standardShirtSizes.map((size) => (
+                            <label key={size} className="flex items-center gap-1.5 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={finisherShirtSelectedSizes.includes(size)}
+                                onChange={() => toggleFinisherShirtSize(size)}
+                                className="rounded border-gray-300"
+                              />
+                              <span className="text-sm">{size}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2 pt-1 border-t">
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={finisherShirtSelectedSizes.includes('Other')}
+                              onChange={(e) => handleFinisherShirtOtherCheck(e.target.checked)}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium">Other</span>
+                          </label>
+                          {finisherShirtSelectedSizes.includes('Other') && (
+                            <Input
+                              value={finisherShirtOtherSize}
+                              onChange={(e) => handleFinisherShirtOtherText(e.target.value)}
+                              placeholder="Enter custom size"
+                              className="flex-1 h-8 text-sm"
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Singlet Sizes */}
+                  <div className="mt-4">
+                    <div className="space-y-2">
+                      <Label>Race Singlet Sizes</Label>
+                      <div className="border rounded-lg p-3 bg-white space-y-2">
+                        <div className="flex flex-wrap gap-2">
+                          {standardShirtSizes.map((size) => (
+                            <label key={size} className="flex items-center gap-1.5 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={singletSelectedSizes.includes(size)}
+                                onChange={() => toggleSingletSize(size)}
+                                className="rounded border-gray-300"
+                              />
+                              <span className="text-sm">{size}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2 pt-1 border-t">
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={singletSelectedSizes.includes('Other')}
+                              onChange={(e) => handleSingletOtherCheck(e.target.checked)}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium">Other</span>
+                          </label>
+                          {singletSelectedSizes.includes('Other') && (
+                            <Input
+                              value={singletOtherSize}
+                              onChange={(e) => handleSingletOtherText(e.target.value)}
+                              placeholder="Enter custom size"
+                              className="flex-1 h-8 text-sm"
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
 
@@ -654,14 +857,8 @@ export default function AdminEventsPage() {
               <div className="space-y-2">
                 <Label>Price Range</Label>
                 <div className="h-10 px-3 flex items-center rounded-md border bg-gray-50 text-sm text-gray-700">
-                  {form.basePrice > 0 ? (
-                    <>
-                      ₱{form.basePrice.toLocaleString()} – ₱{(
-                        form.basePrice +
-                        (form.finisherShirtPrice || 0) +
-                        (form.singletPrice || 0)
-                      ).toLocaleString()}
-                    </>
+                  {form.priceRange ? (
+                    form.priceRange
                   ) : (
                     <span className="text-gray-400">Set Registration Fee to auto-calculate</span>
                   )}
