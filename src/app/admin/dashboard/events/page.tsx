@@ -134,7 +134,7 @@ export default function AdminEventsPage() {
   const [singletOtherSize, setSingletOtherSize] = useState('')
   const [selectedDistances, setSelectedDistances] = useState<string[]>([])
   const [otherDistance, setOtherDistance] = useState('')
-  const [otherInclusions, setOtherInclusions] = useState<Record<string, string>>({}) // { "3K": "Custom Item", ... }
+  const [otherInclusions, setOtherInclusions] = useState<Record<string, string[]>>({}) // { "3K": ["Event Shirt", "Grab Bag"], ... }
   const [openInclusionDropdown, setOpenInclusionDropdown] = useState<string | null>(null) // which distance's dropdown is open
 
   // Helper to get distance prices from form
@@ -235,15 +235,15 @@ export default function AdminEventsPage() {
     setSelectedDistances(parsedDists)
     setOtherDistance(dists.find(d => !standardDistances.includes(d)) || '')
 
-    // Parse inclusions
-    let parsedOtherInclusions: Record<string, string> = {}
+    // Parse inclusions — support old format (single string) and new format (array)
+    let parsedOtherInclusions: Record<string, string[]> = {}
     if (event.distanceInclusions) {
       try {
         const inc: Record<string, string[]> = JSON.parse(event.distanceInclusions)
         Object.entries(inc).forEach(([dist, items]) => {
-          const customItem = items.find(i => !standardInclusions.includes(i))
-          if (customItem) {
-            parsedOtherInclusions[dist] = customItem
+          const customItems = items.filter(i => !standardInclusions.includes(i))
+          if (customItems.length > 0) {
+            parsedOtherInclusions[dist] = customItems
           }
         })
       } catch {}
@@ -505,10 +505,10 @@ export default function AdminEventsPage() {
     const items = current[dist] || []
     let newItems: string[]
     if (item === 'Other') {
-      // For "Other", check if there's already a custom item
-      const existingCustom = items.find(i => !standardInclusions.includes(i))
-      if (existingCustom) {
-        // Remove custom item
+      // For "Other", check if there are already any custom items
+      const existingCustomItems = items.filter(i => !standardInclusions.includes(i))
+      if (existingCustomItems.length > 0) {
+        // Remove ALL custom items
         newItems = items.filter(i => standardInclusions.includes(i))
         setOtherInclusions(prev => {
           const copy = { ...prev }
@@ -516,13 +516,16 @@ export default function AdminEventsPage() {
           return copy
         })
       } else {
-        // Add a placeholder custom item
-        const customText = otherInclusions[dist] || ''
+        // Add an empty custom item entry and start the otherInclusions array
+        const customItems = otherInclusions[dist] || []
         newItems = [...items.filter(i => i !== 'Other')]
-        if (customText) {
-          newItems.push(customText)
+        if (customItems.length > 0) {
+          // Push all existing custom items from otherInclusions state
+          newItems.push(...customItems.filter(c => c.trim() !== ''))
         } else {
-          newItems.push('Other') // placeholder until user types
+          // Add one empty string placeholder to the otherInclusions state
+          setOtherInclusions(prev => ({ ...prev, [dist]: [''] }))
+          // Don't push placeholder to form data — will be added when user types
         }
       }
     } else {
@@ -537,32 +540,67 @@ export default function AdminEventsPage() {
     setForm(prev => ({ ...prev, distanceInclusions: JSON.stringify(current) }))
   }
 
-  // Set custom "Other" inclusion text for a distance
-  const setOtherInclusionText = (dist: string, text: string) => {
-    setOtherInclusions(prev => ({ ...prev, [dist]: text }))
-    // Update the inclusions data
+  // Set custom "Other" inclusion text for a distance at a specific index
+  const setOtherInclusionText = (dist: string, index: number, text: string) => {
+    setOtherInclusions(prev => {
+      const arr = [...(prev[dist] || [])]
+      arr[index] = text
+      return { ...prev, [dist]: arr }
+    })
+    // Update the inclusions data in form
     let current: Record<string, string[]> = {}
     try { current = JSON.parse(form.distanceInclusions || '{}') } catch {}
     const items = current[dist] || []
-    // Replace 'Other' placeholder or existing custom item with the new text
-    const hasOtherPlaceholder = items.includes('Other')
-    const existingCustomIdx = items.findIndex(i => !standardInclusions.includes(i))
-    let newItems: string[]
-    if (hasOtherPlaceholder) {
-      // Replace 'Other' placeholder with the custom text
-      newItems = items.map(i => i === 'Other' ? text : i).filter(Boolean)
-    } else if (existingCustomIdx >= 0) {
-      // Replace existing custom item with new text
-      newItems = items.map((i, idx) => idx === existingCustomIdx ? text : i).filter(Boolean)
-    } else {
-      // No existing custom, just add the text
-      if (text) newItems = [...items, text]
-      else newItems = [...items]
-    }
-    // Remove empty strings
-    newItems = newItems.filter(i => i.trim() !== '')
-    current[dist] = newItems
+    // Get all custom items (non-standard)
+    const standardItems = items.filter(i => standardInclusions.includes(i))
+    // Rebuild custom items from otherInclusions state with the update
+    const updatedCustomArr = [...(otherInclusions[dist] || [])]
+    updatedCustomArr[index] = text
+    const customItems = updatedCustomArr.filter(c => c.trim() !== '')
+    // Also remove 'Other' placeholder if present
+    current[dist] = [...standardItems, ...customItems]
     setForm(prev => ({ ...prev, distanceInclusions: JSON.stringify(current) }))
+  }
+
+  // Add a new empty custom inclusion item for a distance
+  const addOtherInclusionItem = (dist: string) => {
+    const currentArr = otherInclusions[dist] || []
+    setOtherInclusions(prev => ({ ...prev, [dist]: [...currentArr, ''] }))
+  }
+
+  // Remove a specific custom inclusion item for a distance
+  const removeOtherInclusionItem = (dist: string, index: number) => {
+    const currentArr = otherInclusions[dist] || []
+    const newArr = currentArr.filter((_, i) => i !== index)
+    setOtherInclusions(prev => {
+      if (newArr.length === 0) {
+        const copy = { ...prev }
+        delete copy[dist]
+        return copy
+      }
+      return { ...prev, [dist]: newArr }
+    })
+    // Update the inclusions data in form
+    let current: Record<string, string[]> = {}
+    try { current = JSON.parse(form.distanceInclusions || '{}') } catch {}
+    const items = current[dist] || []
+    const standardItems = items.filter(i => standardInclusions.includes(i))
+    const customItems = newArr.filter(c => c.trim() !== '')
+    if (customItems.length === 0) {
+      // If no custom items left, also remove Other-related entries
+      current[dist] = standardItems
+    } else {
+      current[dist] = [...standardItems, ...customItems]
+    }
+    setForm(prev => ({ ...prev, distanceInclusions: JSON.stringify(current) }))
+  }
+
+  // Handle blur on custom inclusion input — remove if empty
+  const handleOtherInclusionBlur = (dist: string, index: number) => {
+    const currentArr = otherInclusions[dist] || []
+    if (currentArr[index] && currentArr[index].trim() === '') {
+      removeOtherInclusionItem(dist, index)
+    }
   }
 
   return (
@@ -882,9 +920,10 @@ export default function AdminEventsPage() {
                               <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-2 space-y-1">
                                 {standardInclusions.map((item) => {
                                   const isOther = item === 'Other'
-                                  // For "Other", check if there's a custom item or 'Other' placeholder in inclusions
+                                  // For "Other", check if there are any custom items
+                                  const customItems = otherInclusions[dist] || []
                                   const isSelected = isOther
-                                    ? (hasOtherInclusion || inclusions.includes('Other'))
+                                    ? customItems.length > 0
                                     : inclusions.includes(item)
                                   return (
                                     <div key={item}>
@@ -893,17 +932,8 @@ export default function AdminEventsPage() {
                                         onClick={() => {
                                           if (isOther) {
                                             if (isSelected) {
-                                              // Remove the custom item / 'Other' placeholder
-                                              const filtered = inclusions.filter(i => standardInclusions.includes(i) && i !== 'Other')
-                                              let current: Record<string, string[]> = {}
-                                              try { current = JSON.parse(form.distanceInclusions || '{}') } catch {}
-                                              current[dist] = filtered
-                                              setForm(prev => ({ ...prev, distanceInclusions: JSON.stringify(current) }))
-                                              setOtherInclusions(prev => {
-                                                const copy = { ...prev }
-                                                delete copy[dist]
-                                                return copy
-                                              })
+                                              // Remove ALL custom items
+                                              toggleInclusion(dist, 'Other')
                                             } else {
                                               toggleInclusion(dist, 'Other')
                                             }
@@ -928,15 +958,36 @@ export default function AdminEventsPage() {
                                         </span>
                                         {item}
                                       </button>
-                                      {/* "Other" custom input - show when Other is checked */}
+                                      {/* "Other" custom inputs - show when Other is checked */}
                                       {isOther && isSelected && (
-                                        <Input
-                                          value={otherInclusions[dist] || ''}
-                                          onChange={(e) => setOtherInclusionText(dist, e.target.value)}
-                                          placeholder="Enter custom inclusion"
-                                          className="mt-1 ml-6 h-7 text-xs max-w-[200px]"
-                                          onClick={(e) => e.stopPropagation()}
-                                        />
+                                        <div className="mt-1 ml-6 space-y-1" onClick={(e) => e.stopPropagation()}>
+                                          {customItems.map((customText, cIdx) => (
+                                            <div key={cIdx} className="flex items-center gap-1">
+                                              <Input
+                                                value={customText}
+                                                onChange={(e) => setOtherInclusionText(dist, cIdx, e.target.value)}
+                                                onBlur={() => handleOtherInclusionBlur(dist, cIdx)}
+                                                placeholder="Enter custom inclusion"
+                                                className="h-7 text-xs max-w-[200px]"
+                                              />
+                                              <button
+                                                type="button"
+                                                onClick={() => removeOtherInclusionItem(dist, cIdx)}
+                                                className="flex items-center justify-center w-5 h-5 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                              >
+                                                <X className="w-3 h-3" />
+                                              </button>
+                                            </div>
+                                          ))}
+                                          <button
+                                            type="button"
+                                            onClick={() => addOtherInclusionItem(dist)}
+                                            className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded transition-colors"
+                                          >
+                                            <Plus className="w-3 h-3" />
+                                            Add Custom Inclusion
+                                          </button>
+                                        </div>
                                       )}
                                     </div>
                                   )
@@ -956,17 +1007,19 @@ export default function AdminEventsPage() {
                                       if (standardInclusions.includes(inc)) {
                                         toggleInclusion(dist, inc)
                                       } else {
-                                        // Remove custom item
-                                        const filtered = inclusions.filter((_, i) => i !== idx)
-                                        let current: Record<string, string[]> = {}
-                                        try { current = JSON.parse(form.distanceInclusions || '{}') } catch {}
-                                        current[dist] = filtered
-                                        setForm(prev => ({ ...prev, distanceInclusions: JSON.stringify(current) }))
-                                        setOtherInclusions(prev => {
-                                          const copy = { ...prev }
-                                          delete copy[dist]
-                                          return copy
-                                        })
+                                        // Remove this specific custom item by finding its index in the custom items
+                                        const customItemsArr = otherInclusions[dist] || []
+                                        const customIdx = customItemsArr.indexOf(inc)
+                                        if (customIdx >= 0) {
+                                          removeOtherInclusionItem(dist, customIdx)
+                                        } else {
+                                          // Fallback: remove by inclusion index
+                                          const filtered = inclusions.filter((_, i) => i !== idx)
+                                          let current: Record<string, string[]> = {}
+                                          try { current = JSON.parse(form.distanceInclusions || '{}') } catch {}
+                                          current[dist] = filtered
+                                          setForm(prev => ({ ...prev, distanceInclusions: JSON.stringify(current) }))
+                                        }
                                       }
                                     }}
                                     className="ml-0.5 text-orange-400 hover:text-orange-700"

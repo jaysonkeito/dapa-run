@@ -62,7 +62,7 @@ export default function Certificate({
   }
 
   return (
-    <div className="relative w-full max-w-[800px] mx-auto bg-white aspect-[8.5/11] flex flex-col items-center justify-center p-12 print:p-8" id="certificate">
+    <div className="relative w-full max-w-[800px] mx-auto bg-white aspect-[8.5/11] flex flex-col items-center justify-center p-12 print:p-8" id="e-certificate">
       {/* Outer decorative border */}
       <div className="absolute inset-4 border-4 border-double border-orange-300 rounded-sm" />
       {/* Inner border */}

@@ -250,7 +250,7 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Settings</h1>
@@ -287,15 +287,11 @@ export default function AdminSettingsPage() {
                 <Input value={settings.site_name_suffix || ''} onChange={(e) => updateSetting('site_name_suffix', e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Site Description</Label>
-                <Textarea value={settings.site_description || ''} onChange={(e) => updateSetting('site_description', e.target.value)} rows={3} />
-              </div>
-              <div className="space-y-2">
-                <Label>Hero Heading</Label>
+                <Label>Homepage Heading</Label>
                 <Input value={settings.site_hero_heading || ''} onChange={(e) => updateSetting('site_hero_heading', e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Hero Description</Label>
+                <Label>Homepage Description</Label>
                 <p className="text-xs text-gray-500">Also displayed in the footer section</p>
                 <Textarea value={settings.site_hero_description || ''} onChange={(e) => updateSetting('site_hero_description', e.target.value)} rows={3} />
               </div>
@@ -371,18 +367,22 @@ export default function AdminSettingsPage() {
               <h3 className="font-bold text-gray-900 text-lg">Images</h3>
             </div>
             <div className="space-y-4">
-              <ImageUpload
-                value={settings.logo_image || ''}
-                onChange={(url) => updateSetting('logo_image', url)}
-                aspectRatio="1:1"
-                label="Logo Image"
-              />
-              <ImageUpload
-                value={settings.hero_image || ''}
-                onChange={(url) => updateSetting('hero_image', url)}
-                aspectRatio="16:9"
-                label="Hero Banner Image"
-              />
+              <div className="max-w-xs">
+                <ImageUpload
+                  value={settings.logo_image || ''}
+                  onChange={(url) => updateSetting('logo_image', url)}
+                  aspectRatio="1:1"
+                  label="Logo Image"
+                />
+              </div>
+              <div className="max-w-md">
+                <ImageUpload
+                  value={settings.hero_image || ''}
+                  onChange={(url) => updateSetting('hero_image', url)}
+                  aspectRatio="16:9"
+                  label="Hero Banner Image"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>

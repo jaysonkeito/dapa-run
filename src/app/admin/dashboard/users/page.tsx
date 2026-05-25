@@ -36,7 +36,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Plus, Trash2, Loader2, UserPlus, Shield, Pencil, Download, Code } from 'lucide-react'
+import { Trash2, Loader2, Pencil, Download } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { generateCSV, formatDateForReport } from '@/lib/report-utils'
 
@@ -58,12 +58,8 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserData[]>([])
   const [loading, setLoading] = useState(true)
   const [roleFilter, setRoleFilter] = useState<string>('all')
-  const [addDialogOpen, setAddDialogOpen] = useState(false)
-  const [addType, setAddType] = useState<'staff' | 'developer'>('staff')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null)
-  const [addForm, setAddForm] = useState({ name: '', email: '', password: '' })
-  const [saving, setSaving] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editForm, setEditForm] = useState({ name: '', email: '', phone: '', role: 'user', password: '' })
   const [editSaving, setEditSaving] = useState(false)
@@ -85,30 +81,6 @@ export default function AdminUsersPage() {
   const filteredUsers = users
     .filter((u) => !['admin', 'staff', 'developer'].includes(u.role)) // Only show regular users
     .filter((u) => roleFilter === 'all' || u.role === roleFilter)
-
-  const handleAddUser = async () => {
-    setSaving(true)
-    try {
-      const res = await fetch('/api/admin/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...addForm, role: addType }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        toast({ title: 'Error', description: data.error || 'Failed to create account', variant: 'destructive' })
-        return
-      }
-      toast({ title: 'Account Created', description: `${addForm.name} has been created as ${addType}.` })
-      setAddDialogOpen(false)
-      setAddForm({ name: '', email: '', password: '' })
-      fetchUsers()
-    } catch {
-      toast({ title: 'Error', description: 'Something went wrong.', variant: 'destructive' })
-    } finally {
-      setSaving(false)
-    }
-  }
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
@@ -223,18 +195,6 @@ export default function AdminUsersPage() {
               <SelectItem value="user">User</SelectItem>
             </SelectContent>
           </Select>
-          {isAdmin && (
-            <>
-              <Button onClick={() => { setAddType('staff'); setAddDialogOpen(true) }} className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold">
-                <UserPlus className="w-4 h-4 mr-2" />
-                Add Staff
-              </Button>
-              <Button onClick={() => { setAddType('developer'); setAddDialogOpen(true) }} variant="outline" className="border-orange-500 text-orange-600 hover:bg-orange-50 font-semibold">
-                <Code className="w-4 h-4 mr-2" />
-                Add Developer
-              </Button>
-            </>
-          )}
         </div>
       </div>
 
@@ -302,39 +262,6 @@ export default function AdminUsersPage() {
           </Table>
         </div>
       </div>
-
-      {/* Add Staff/Developer Dialog */}
-      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogTitle>Add {addType === 'developer' ? 'Developer' : 'Staff'} Account</DialogTitle>
-          <div className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>Full Name</Label>
-              <Input value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} placeholder={`${addType} name`} />
-            </div>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input type="email" value={addForm.email} onChange={(e) => setAddForm({ ...addForm, email: e.target.value })} placeholder={`${addType}@daparun.com`} />
-            </div>
-            <div className="space-y-2">
-              <Label>Password</Label>
-              <Input type="password" value={addForm.password} onChange={(e) => setAddForm({ ...addForm, password: e.target.value })} placeholder="At least 6 characters" />
-            </div>
-            <p className="text-xs text-gray-500">The account will be created with &quot;{addType.charAt(0).toUpperCase() + addType.slice(1)}&quot; role.</p>
-            <div className="flex gap-3 pt-2">
-              <Button
-                onClick={handleAddUser}
-                disabled={saving}
-                className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold"
-              >
-                {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
-                Create {addType === 'developer' ? 'Developer' : 'Staff'}
-              </Button>
-              <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Confirmation */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
