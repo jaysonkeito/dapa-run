@@ -36,7 +36,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Plus, Trash2, Loader2, UserPlus, Shield, Pencil, Download } from 'lucide-react'
+import { Plus, Trash2, Loader2, UserPlus, Shield, Pencil, Download, Code } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { generateCSV, formatDateForReport } from '@/lib/report-utils'
 
@@ -59,6 +59,7 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true)
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [addType, setAddType] = useState<'staff' | 'developer'>('staff')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null)
   const [addForm, setAddForm] = useState({ name: '', email: '', password: '' })
@@ -81,22 +82,24 @@ export default function AdminUsersPage() {
 
   useEffect(() => { fetchUsers() }, [])
 
-  const filteredUsers = users.filter((u) => roleFilter === 'all' || u.role === roleFilter)
+  const filteredUsers = users
+    .filter((u) => !['admin', 'staff', 'developer'].includes(u.role)) // Only show regular users
+    .filter((u) => roleFilter === 'all' || u.role === roleFilter)
 
-  const handleAddStaff = async () => {
+  const handleAddUser = async () => {
     setSaving(true)
     try {
       const res = await fetch('/api/admin/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(addForm),
+        body: JSON.stringify({ ...addForm, role: addType }),
       })
       const data = await res.json()
       if (!res.ok) {
-        toast({ title: 'Error', description: data.error || 'Failed to create staff account', variant: 'destructive' })
+        toast({ title: 'Error', description: data.error || 'Failed to create account', variant: 'destructive' })
         return
       }
-      toast({ title: 'Staff Created', description: `${addForm.name} has been created as staff.` })
+      toast({ title: 'Account Created', description: `${addForm.name} has been created as ${addType}.` })
       setAddDialogOpen(false)
       setAddForm({ name: '', email: '', password: '' })
       fetchUsers()
@@ -141,11 +144,9 @@ export default function AdminUsersPage() {
         email: editForm.email,
         phone: editForm.phone,
       }
-      // Don't allow changing own role
       if (selectedUser.id !== currentUserId) {
         payload.role = editForm.role
       }
-      // Include password only if provided
       if (editForm.password.trim()) {
         payload.password = editForm.password
       }
@@ -187,8 +188,6 @@ export default function AdminUsersPage() {
   }
 
   const roleColors: Record<string, string> = {
-    admin: 'bg-red-500 text-white',
-    staff: 'bg-orange-500 text-white',
     user: 'bg-gray-500 text-white',
   }
 
@@ -197,7 +196,7 @@ export default function AdminUsersPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Users</h1>
-          <p className="text-gray-500 mt-1">Manage user accounts and roles</p>
+          <p className="text-xs text-orange-600 mt-1">Shows participant accounts only. Team members (Admin, Staff, Developer) are managed in Settings → Team Management.</p>
         </div>
         <div className="flex items-center gap-3">
           <Button onClick={() => {
@@ -220,17 +219,21 @@ export default function AdminUsersPage() {
               <SelectValue placeholder="Filter role" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Roles</SelectItem>
+              <SelectItem value="all">All</SelectItem>
               <SelectItem value="user">User</SelectItem>
-              <SelectItem value="staff">Staff</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
             </SelectContent>
           </Select>
           {isAdmin && (
-            <Button onClick={() => setAddDialogOpen(true)} className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold">
-              <UserPlus className="w-4 h-4 mr-2" />
-              Add Staff
-            </Button>
+            <>
+              <Button onClick={() => { setAddType('staff'); setAddDialogOpen(true) }} className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold">
+                <UserPlus className="w-4 h-4 mr-2" />
+                Add Staff
+              </Button>
+              <Button onClick={() => { setAddType('developer'); setAddDialogOpen(true) }} variant="outline" className="border-orange-500 text-orange-600 hover:bg-orange-50 font-semibold">
+                <Code className="w-4 h-4 mr-2" />
+                Add Developer
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -267,29 +270,12 @@ export default function AdminUsersPage() {
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         {user.name}
-                        {user.role === 'admin' && <Shield className="w-3 h-3 text-red-500" />}
                       </div>
                     </TableCell>
                     <TableCell className="text-sm text-gray-600">{user.email}</TableCell>
                     <TableCell className="text-sm text-gray-600">{user.phone || '—'}</TableCell>
                     <TableCell>
-                      {isAdmin && user.id !== currentUserId ? (
-                        <Select
-                          value={user.role}
-                          onValueChange={(v) => handleRoleChange(user.id, v)}
-                        >
-                          <SelectTrigger className="w-[100px] h-7">
-                            <Badge className={roleColors[user.role]}>{user.role}</Badge>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="user">User</SelectItem>
-                            <SelectItem value="staff">Staff</SelectItem>
-                            <SelectItem value="admin">Admin</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Badge className={roleColors[user.role]}>{user.role}</Badge>
-                      )}
+                      <Badge className={roleColors[user.role] || 'bg-gray-500 text-white'}>{user.role}</Badge>
                     </TableCell>
                     <TableCell className="text-sm text-gray-600">{user._count?.registrations ?? 0}</TableCell>
                     <TableCell className="text-sm text-gray-600">
@@ -317,32 +303,32 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
-      {/* Add Staff Dialog */}
+      {/* Add Staff/Developer Dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="max-w-md">
-          <DialogTitle>Add Staff Account</DialogTitle>
+          <DialogTitle>Add {addType === 'developer' ? 'Developer' : 'Staff'} Account</DialogTitle>
           <div className="space-y-4 mt-4">
             <div className="space-y-2">
               <Label>Full Name</Label>
-              <Input value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} placeholder="Staff name" />
+              <Input value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} placeholder={`${addType} name`} />
             </div>
             <div className="space-y-2">
               <Label>Email</Label>
-              <Input type="email" value={addForm.email} onChange={(e) => setAddForm({ ...addForm, email: e.target.value })} placeholder="staff@daparun.com" />
+              <Input type="email" value={addForm.email} onChange={(e) => setAddForm({ ...addForm, email: e.target.value })} placeholder={`${addType}@daparun.com`} />
             </div>
             <div className="space-y-2">
               <Label>Password</Label>
               <Input type="password" value={addForm.password} onChange={(e) => setAddForm({ ...addForm, password: e.target.value })} placeholder="At least 6 characters" />
             </div>
-            <p className="text-xs text-gray-500">The account will be created with &quot;Staff&quot; role. Staff can access Dashboard, Events, Results, and Registrations only.</p>
+            <p className="text-xs text-gray-500">The account will be created with &quot;{addType.charAt(0).toUpperCase() + addType.slice(1)}&quot; role.</p>
             <div className="flex gap-3 pt-2">
               <Button
-                onClick={handleAddStaff}
+                onClick={handleAddUser}
                 disabled={saving}
                 className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold"
               >
                 {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
-                Create Staff
+                Create {addType === 'developer' ? 'Developer' : 'Staff'}
               </Button>
               <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
             </div>
@@ -396,11 +382,9 @@ export default function AdminUsersPage() {
                     <SelectItem value="user">User</SelectItem>
                     <SelectItem value="staff">Staff</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="developer">Developer</SelectItem>
                   </SelectContent>
                 </Select>
-                {selectedUser?.id === currentUserId && (
-                  <p className="text-xs text-gray-400">You cannot change your own role.</p>
-                )}
               </div>
             )}
             {selectedUser?.id === currentUserId && (

@@ -5,13 +5,34 @@ import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { logAction } from '@/lib/system-logger'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session || (session.user as Record<string, unknown>)?.role !== 'admin') {
+    if (!session || !['admin', 'developer'].includes((session.user as Record<string, unknown>)?.role as string)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { searchParams } = new URL(request.url)
+    const includeTeam = searchParams.get('includeTeam')
+
+    // If includeTeam=true, return all users including admin/staff/developer
+    if (includeTeam === 'true') {
+      const users = await db.user.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          role: true,
+          createdAt: true,
+          _count: { select: { registrations: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+      return NextResponse.json(users)
+    }
+
+    // Default: exclude admin, staff, developer (for the Users page)
     const users = await db.user.findMany({
       select: {
         id: true,
@@ -21,6 +42,9 @@ export async function GET() {
         role: true,
         createdAt: true,
         _count: { select: { registrations: true } },
+      },
+      where: {
+        role: { notIn: ['admin', 'staff', 'developer'] },
       },
       orderBy: { createdAt: 'desc' },
     })
@@ -40,7 +64,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { name, email, password } = body as { name: string; email: string; password: string }
+    const { name, email, password, role } = body as { name: string; email: string; password: string; role?: string }
 
     if (!name || !email || !password) {
       return NextResponse.json({ error: 'Name, email, and password are required' }, { status: 400 })
@@ -56,13 +80,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Email already exists' }, { status: 400 })
     }
 
+    const assignedRole = role || 'staff'
+
     const hashedPassword = await bcrypt.hash(password, 12)
     const user = await db.user.create({
       data: {
         name,
         email,
         password: hashedPassword,
-        role: 'staff',
+        role: assignedRole,
       },
       select: {
         id: true,
@@ -78,11 +104,11 @@ export async function POST(request: Request) {
     await logAction({
       action: 'CREATE_USER',
       category: 'users',
-      description: `Created user "${name}" (${email}) with role staff`,
+      description: `Created user "${name}" (${email}) with role ${assignedRole}`,
       userId: sessionUser?.id as string,
       userName: sessionUser?.name as string,
       userRole: sessionUser?.role as string,
-      details: { newUserId: user.id, name, email, role: 'staff' },
+      details: { newUserId: user.id, name, email, role: assignedRole },
     })
 
     return NextResponse.json(user, { status: 201 })

@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import {
   Loader2, Save, Globe, Phone, Mail, MapPin, ImageIcon, Facebook,
-  Users, Trash2, UserPlus, Lock, Eye, EyeOff, AlertTriangle,
+  Users, Trash2, UserPlus, Lock, Eye, EyeOff, AlertTriangle, Pencil,
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import ImageUpload from '@/components/ImageUpload'
@@ -46,9 +46,16 @@ export default function AdminSettingsPage() {
   const [staffName, setStaffName] = useState('')
   const [staffEmail, setStaffEmail] = useState('')
   const [staffPassword, setStaffPassword] = useState('')
+  const [staffRole, setStaffRole] = useState('staff')
   const [staffLoading, setStaffLoading] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<TeamMember | null>(null)
+  const [editTeamOpen, setEditTeamOpen] = useState(false)
+  const [editTeamMember, setEditTeamMember] = useState<TeamMember | null>(null)
+  const [editTeamName, setEditTeamName] = useState('')
+  const [editTeamEmail, setEditTeamEmail] = useState('')
+  const [editTeamRole, setEditTeamRole] = useState('staff')
+  const [editTeamSaving, setEditTeamSaving] = useState(false)
 
   // Change Password
   const [currentPassword, setCurrentPassword] = useState('')
@@ -74,9 +81,16 @@ export default function AdminSettingsPage() {
 
   const fetchTeamMembers = async () => {
     try {
-      const res = await fetch('/api/admin/users')
-      const data = await res.json()
-      setTeamMembers(data.filter((u: TeamMember) => u.role === 'staff' || u.role === 'admin'))
+      const res = await fetch('/api/admin/users?includeTeam=true')
+      if (res.ok) {
+        const data = await res.json()
+        setTeamMembers(data.filter((u: TeamMember) => ['staff', 'admin', 'developer'].includes(u.role)))
+      } else {
+        // Fallback: use the regular users endpoint and filter
+        const res2 = await fetch('/api/admin/users')
+        const data2 = await res2.json()
+        setTeamMembers(data2.filter((u: TeamMember) => ['staff', 'admin', 'developer'].includes(u.role)))
+      }
     } catch (error) {
       console.error('Failed to fetch team members:', error)
     } finally {
@@ -125,20 +139,21 @@ export default function AdminSettingsPage() {
       const res = await fetch('/api/admin/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: staffName, email: staffEmail, password: staffPassword, role: 'staff' }),
+        body: JSON.stringify({ name: staffName, email: staffEmail, password: staffPassword, role: staffRole }),
       })
       if (!res.ok) {
         const data = await res.json()
-        throw new Error(data.error || 'Failed to create staff')
+        throw new Error(data.error || 'Failed to create team member')
       }
-      toast({ title: 'Staff Created', description: `${staffName} has been added as a staff member.` })
+      toast({ title: 'Team Member Created', description: `${staffName} has been added as ${staffRole}.` })
       setAddStaffOpen(false)
       setStaffName('')
       setStaffEmail('')
       setStaffPassword('')
+      setStaffRole('staff')
       fetchTeamMembers()
     } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to create staff.', variant: 'destructive' })
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to create team member.', variant: 'destructive' })
     } finally {
       setStaffLoading(false)
     }
@@ -158,6 +173,38 @@ export default function AdminSettingsPage() {
       fetchTeamMembers()
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to delete member.', variant: 'destructive' })
+    }
+  }
+
+  const openEditTeamMember = (member: TeamMember) => {
+    setEditTeamMember(member)
+    setEditTeamName(member.name)
+    setEditTeamEmail(member.email)
+    setEditTeamRole(member.role)
+    setEditTeamOpen(true)
+  }
+
+  const handleEditTeamMember = async () => {
+    if (!editTeamMember) return
+    setEditTeamSaving(true)
+    try {
+      const res = await fetch(`/api/admin/users/${editTeamMember.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editTeamName, email: editTeamEmail, role: editTeamRole }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to update')
+      }
+      toast({ title: 'Member Updated', description: `${editTeamName} has been updated.` })
+      setEditTeamOpen(false)
+      setEditTeamMember(null)
+      fetchTeamMembers()
+    } catch (err) {
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to update member.', variant: 'destructive' })
+    } finally {
+      setEditTeamSaving(false)
     }
   }
 
@@ -346,19 +393,20 @@ export default function AdminSettingsPage() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-orange-500" />
-                <h3 className="font-bold text-gray-900 text-lg">Management Team</h3>
+                <h3 className="font-bold text-gray-900 text-lg">Team Management</h3>
               </div>
               {isAdmin && (
                 <Button
-                  onClick={() => setAddStaffOpen(true)}
+                  onClick={() => { setStaffRole('staff'); setAddStaffOpen(true) }}
                   size="sm"
                   className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold"
                 >
                   <UserPlus className="w-4 h-4 mr-1" />
-                  Add Staff
+                  Add Member
                 </Button>
               )}
             </div>
+            <p className="text-xs text-gray-500 mb-4">Manage admin, staff, and developer accounts. These users have dashboard access.</p>
             {teamLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-6 h-6 text-orange-500 animate-spin" />
@@ -370,8 +418,16 @@ export default function AdminSettingsPage() {
                 {teamMembers.map((member) => (
                   <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
-                        <span className="text-orange-600 font-bold text-sm">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        member.role === 'admin' ? 'bg-orange-100' :
+                        member.role === 'developer' ? 'bg-purple-100' :
+                        'bg-blue-100'
+                      }`}>
+                        <span className={`font-bold text-sm ${
+                          member.role === 'admin' ? 'text-orange-600' :
+                          member.role === 'developer' ? 'text-purple-600' :
+                          'text-blue-600'
+                        }`}>
                           {member.name.charAt(0).toUpperCase()}
                         </span>
                       </div>
@@ -384,11 +440,23 @@ export default function AdminSettingsPage() {
                       <span className={`text-xs font-medium px-2 py-1 rounded-full ${
                         member.role === 'admin'
                           ? 'bg-orange-100 text-orange-700'
+                          : member.role === 'developer'
+                          ? 'bg-purple-100 text-purple-700'
                           : 'bg-blue-100 text-blue-700'
                       }`}>
                         {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
                       </span>
-                      {member.role !== 'admin' && isAdmin && (
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEditTeamMember(member)}
+                          className="text-gray-400 hover:text-orange-500 h-8 w-8"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                      )}
+                      {isAdmin && member.id !== (session?.user as Record<string, unknown>)?.id && (
                         <Button
                           variant="ghost"
                           size="icon"
@@ -498,10 +566,10 @@ export default function AdminSettingsPage() {
         </div>
       )}
 
-      {/* Add Staff Dialog */}
+      {/* Add Team Member Dialog */}
       <Dialog open={addStaffOpen} onOpenChange={setAddStaffOpen}>
         <DialogContent className="max-w-md">
-          <DialogTitle>Add Staff Member</DialogTitle>
+          <DialogTitle>Add Team Member</DialogTitle>
           <div className="space-y-4 mt-4">
             <div className="space-y-2">
               <Label>Full Name</Label>
@@ -509,7 +577,7 @@ export default function AdminSettingsPage() {
             </div>
             <div className="space-y-2">
               <Label>Email</Label>
-              <Input type="email" value={staffEmail} onChange={(e) => setStaffEmail(e.target.value)} placeholder="staff@email.com" />
+              <Input type="email" value={staffEmail} onChange={(e) => setStaffEmail(e.target.value)} placeholder="team@email.com" />
             </div>
             <div className="space-y-2">
               <Label>Password</Label>
@@ -529,9 +597,23 @@ export default function AdminSettingsPage() {
                 </button>
               </div>
             </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <select
+                value={staffRole}
+                onChange={(e) => setStaffRole(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+              >
+                <option value="staff">Staff</option>
+                <option value="admin">Admin</option>
+                <option value="developer">Developer</option>
+              </select>
+            </div>
             <div className="bg-blue-50 p-3 rounded-lg">
               <p className="text-xs text-blue-700">
-                Staff accounts have limited access: they can manage Events, Race Results, and Registrations only. They cannot access Settings, Users, Merchandise, or Reports.
+                {staffRole === 'staff' && 'Staff accounts have limited access: they can manage Events, Race Results, and Registrations only.'}
+                {staffRole === 'admin' && 'Admin accounts have full access to all features and settings.'}
+                {staffRole === 'developer' && 'Developer accounts have access to the developer panel for direct database management.'}
               </p>
             </div>
             <Button
@@ -540,8 +622,48 @@ export default function AdminSettingsPage() {
               className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold"
             >
               {staffLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <UserPlus className="w-4 h-4 mr-2" />}
-              Create Staff Account
+              Create {staffRole.charAt(0).toUpperCase() + staffRole.slice(1)} Account
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Team Member Dialog */}
+      <Dialog open={editTeamOpen} onOpenChange={setEditTeamOpen}>
+        <DialogContent className="max-w-md">
+          <DialogTitle>Edit Team Member</DialogTitle>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label>Full Name</Label>
+              <Input value={editTeamName} onChange={(e) => setEditTeamName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input type="email" value={editTeamEmail} onChange={(e) => setEditTeamEmail(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <select
+                value={editTeamRole}
+                onChange={(e) => setEditTeamRole(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+              >
+                <option value="staff">Staff</option>
+                <option value="admin">Admin</option>
+                <option value="developer">Developer</option>
+              </select>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button
+                onClick={handleEditTeamMember}
+                disabled={editTeamSaving}
+                className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold"
+              >
+                {editTeamSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                Save Changes
+              </Button>
+              <Button variant="outline" onClick={() => setEditTeamOpen(false)}>Cancel</Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

@@ -7,6 +7,7 @@ import { db } from "@/lib/db"
 const isHttps = (process.env.NEXTAUTH_URL || "").startsWith("https")
 
 export const authOptions: NextAuthOptions = {
+  trustHost: true,
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -80,6 +81,6 @@ export const authOptions: NextAuthOptions = {
     signIn: "/admin/login",
     error: "/admin/login",
   },
-  secret: process.env.NEXTAUTH_SECRET || "dapa-run-secret-key-2026",
+  secret: process.env.NEXTAUTH_SECRET || "dapa-run-secret-key-2026-production",
   debug: false,
 }

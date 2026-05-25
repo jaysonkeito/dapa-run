@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
@@ -39,16 +38,21 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Plus, Pencil, Trash2, Loader2, Eye, Download } from 'lucide-react'
+import { Plus, Pencil, Trash2, Loader2, Eye, Download, X, PlusCircle, ChevronDown, Check } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { cn } from '@/lib/utils'
 import ImageUpload from '@/components/ImageUpload'
 import { generateCSV, formatDateForReport, formatPriceForReport } from '@/lib/report-utils'
+import TimePicker from '@/components/TimePicker'
+import TimeRangePicker from '@/components/TimeRangePicker'
+import DatePicker from '@/components/DatePicker'
 
 interface Event {
   id: string
   title: string
   date: string
   time: string
+  timeEnd: string
   location: string
   priceRange: string
   image: string
@@ -64,6 +68,7 @@ interface Event {
   finisherShirtSizes: string | null
   singletSizes: string | null
   distancePricing: string
+  distanceInclusions: string
   isPackage: boolean
   _count?: { registrations: number }
 }
@@ -72,6 +77,7 @@ const emptyEvent = {
   title: '',
   date: '',
   time: '',
+  timeEnd: '',
   location: '',
   priceRange: '',
   image: '/hero-banner.png',
@@ -87,11 +93,24 @@ const emptyEvent = {
   finisherShirtSizes: '',
   singletSizes: '',
   distancePricing: '',
+  distanceInclusions: '',
   isPackage: false,
 }
 
+const standardInclusions = ['Race Bib', 'Finishers Medal', 'Post-Race Meal', 'Other']
+
 const standardShirtSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL']
+const standardSingletSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL']
 const standardDistances = ['1K', '3K', '5K', '10K', '21K', '42K', '50K', '100K']
+
+// Sort distances from shortest to longest
+const sortDistances = (dists: string[]): string[] => {
+  return [...dists].sort((a, b) => {
+    const numA = parseInt(a.replace(/[^\d]/g, '')) || 0
+    const numB = parseInt(b.replace(/[^\d]/g, '')) || 0
+    return numA - numB
+  })
+}
 
 export default function AdminEventsPage() {
   const router = useRouter()
@@ -106,6 +125,7 @@ export default function AdminEventsPage() {
   const [form, setForm] = useState(emptyEvent)
   const [saving, setSaving] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [summaryOpen, setSummaryOpen] = useState(false)
 
   // Multi-select state for sizes and distances
   const [finisherShirtSelectedSizes, setFinisherShirtSelectedSizes] = useState<string[]>([])
@@ -114,11 +134,27 @@ export default function AdminEventsPage() {
   const [singletOtherSize, setSingletOtherSize] = useState('')
   const [selectedDistances, setSelectedDistances] = useState<string[]>([])
   const [otherDistance, setOtherDistance] = useState('')
+  const [otherInclusions, setOtherInclusions] = useState<Record<string, string>>({}) // { "3K": "Custom Item", ... }
+  const [openInclusionDropdown, setOpenInclusionDropdown] = useState<string | null>(null) // which distance's dropdown is open
+
+  // Helper to get distance prices from form
+  const getDistancePrices = () => {
+    const pricing = form.distancePricing ? (() => { try { return JSON.parse(form.distancePricing) } catch { return {} } })() : {}
+    return Object.values(pricing) as number[]
+  }
+
+  // Helper to get max distance fee
+  const getMaxDistanceFee = () => {
+    const distPrices = getDistancePrices()
+    if (distPrices.length > 0 && distPrices.some(p => p > 0)) {
+      return Math.max(...distPrices)
+    }
+    return 0
+  }
 
   // Auto-calculate price range
   useEffect(() => {
-    const pricing = form.distancePricing ? (() => { try { return JSON.parse(form.distancePricing) } catch { return {} } })() : {}
-    const distPrices = Object.values(pricing) as number[]
+    const distPrices = getDistancePrices()
 
     if (form.isPackage) {
       // Package: min distance price to max distance price
@@ -132,9 +168,9 @@ export default function AdminEventsPage() {
         setForm(prev => ({ ...prev, priceRange: '' }))
       }
     } else {
-      // Standard: registration fee to registration fee + all add-ons
-      const minBase = distPrices.length > 0 && distPrices.some(p => p > 0) ? Math.min(...distPrices.filter(p => p > 0)) : form.basePrice
-      const maxBase = distPrices.length > 0 && distPrices.some(p => p > 0) ? Math.max(...distPrices) : form.basePrice
+      // Standard: min distance fee to max distance fee + all add-ons
+      const minBase = distPrices.length > 0 && distPrices.some(p => p > 0) ? Math.min(...distPrices.filter(p => p > 0)) : 0
+      const maxBase = distPrices.length > 0 && distPrices.some(p => p > 0) ? Math.max(...distPrices) : 0
       if (minBase > 0) {
         const maxTotal = maxBase + (form.finisherShirtPrice || 0) + (form.singletPrice || 0)
         setForm(prev => ({ ...prev, priceRange: `₱${minBase.toLocaleString()} – ₱${maxTotal.toLocaleString()}` }))
@@ -167,6 +203,8 @@ export default function AdminEventsPage() {
     setSingletOtherSize('')
     setSelectedDistances([])
     setOtherDistance('')
+    setOtherInclusions({})
+    setOpenInclusionDropdown(null)
     setDialogOpen(true)
   }
 
@@ -183,11 +221,11 @@ export default function AdminEventsPage() {
 
     // Parse singlet sizes
     const sSizes = event.singletSizes ? event.singletSizes.split(',').filter(Boolean) : []
-    const hasOtherSShirt = sSizes.some(s => !standardShirtSizes.includes(s))
-    const parsedSSizes = sSizes.filter(s => standardShirtSizes.includes(s))
+    const hasOtherSShirt = sSizes.some(s => !standardSingletSizes.includes(s))
+    const parsedSSizes = sSizes.filter(s => standardSingletSizes.includes(s))
     if (hasOtherSShirt) parsedSSizes.push('Other')
     setSingletSelectedSizes(parsedSSizes)
-    setSingletOtherSize(sSizes.find(s => !standardShirtSizes.includes(s)) || '')
+    setSingletOtherSize(sSizes.find(s => !standardSingletSizes.includes(s)) || '')
 
     // Parse distances
     const dists = event.distances ? event.distances.split(',').filter(Boolean) : []
@@ -197,10 +235,27 @@ export default function AdminEventsPage() {
     setSelectedDistances(parsedDists)
     setOtherDistance(dists.find(d => !standardDistances.includes(d)) || '')
 
+    // Parse inclusions
+    let parsedOtherInclusions: Record<string, string> = {}
+    if (event.distanceInclusions) {
+      try {
+        const inc: Record<string, string[]> = JSON.parse(event.distanceInclusions)
+        Object.entries(inc).forEach(([dist, items]) => {
+          const customItem = items.find(i => !standardInclusions.includes(i))
+          if (customItem) {
+            parsedOtherInclusions[dist] = customItem
+          }
+        })
+      } catch {}
+    }
+    setOtherInclusions(parsedOtherInclusions)
+    setOpenInclusionDropdown(null)
+
     setForm({
       title: event.title,
       date: event.date,
       time: event.time,
+      timeEnd: event.timeEnd || '',
       location: event.location,
       priceRange: event.priceRange,
       image: event.image,
@@ -216,6 +271,7 @@ export default function AdminEventsPage() {
       finisherShirtSizes: event.finisherShirtSizes || '',
       singletSizes: event.singletSizes || '',
       distancePricing: event.distancePricing || '',
+      distanceInclusions: event.distanceInclusions || '',
       isPackage: event.isPackage || false,
     })
     setDialogOpen(true)
@@ -227,6 +283,32 @@ export default function AdminEventsPage() {
   }
 
   const handleSave = async () => {
+    // Validate required fields
+    if (!form.title.trim()) {
+      toast({ title: 'Validation Error', description: 'Title is required.', variant: 'destructive' })
+      return
+    }
+    if (!form.date) {
+      toast({ title: 'Validation Error', description: 'Race Date is required.', variant: 'destructive' })
+      return
+    }
+    if (!form.time) {
+      toast({ title: 'Validation Error', description: 'Race Start Time is required.', variant: 'destructive' })
+      return
+    }
+    if (!form.timeEnd) {
+      toast({ title: 'Validation Error', description: 'Race End Time is required.', variant: 'destructive' })
+      return
+    }
+    if (!form.regCloseDate) {
+      toast({ title: 'Validation Error', description: 'Registration Close Date is required.', variant: 'destructive' })
+      return
+    }
+    if (!form.regCloseTime) {
+      toast({ title: 'Validation Error', description: 'Registration Close Time is required.', variant: 'destructive' })
+      return
+    }
+
     setSaving(true)
     try {
       if (selectedEvent) {
@@ -405,6 +487,84 @@ export default function AdminEventsPage() {
     setForm(prev => ({ ...prev, distances: allDists.join(',') }))
   }
 
+  // Helper to get inclusions for a specific distance
+  const getInclusions = (dist: string): string[] => {
+    if (!form.distanceInclusions) return []
+    try {
+      const inc: Record<string, string[]> = JSON.parse(form.distanceInclusions)
+      return inc[dist] || []
+    } catch {
+      return []
+    }
+  }
+
+  // Toggle an inclusion item for a distance
+  const toggleInclusion = (dist: string, item: string) => {
+    let current: Record<string, string[]> = {}
+    try { current = JSON.parse(form.distanceInclusions || '{}') } catch {}
+    const items = current[dist] || []
+    let newItems: string[]
+    if (item === 'Other') {
+      // For "Other", check if there's already a custom item
+      const existingCustom = items.find(i => !standardInclusions.includes(i))
+      if (existingCustom) {
+        // Remove custom item
+        newItems = items.filter(i => standardInclusions.includes(i))
+        setOtherInclusions(prev => {
+          const copy = { ...prev }
+          delete copy[dist]
+          return copy
+        })
+      } else {
+        // Add a placeholder custom item
+        const customText = otherInclusions[dist] || ''
+        newItems = [...items.filter(i => i !== 'Other')]
+        if (customText) {
+          newItems.push(customText)
+        } else {
+          newItems.push('Other') // placeholder until user types
+        }
+      }
+    } else {
+      if (items.includes(item)) {
+        newItems = items.filter(i => i !== item)
+      } else {
+        // Also remove 'Other' placeholder if it exists when adding standard items
+        newItems = [...items.filter(i => i !== 'Other'), item]
+      }
+    }
+    current[dist] = newItems
+    setForm(prev => ({ ...prev, distanceInclusions: JSON.stringify(current) }))
+  }
+
+  // Set custom "Other" inclusion text for a distance
+  const setOtherInclusionText = (dist: string, text: string) => {
+    setOtherInclusions(prev => ({ ...prev, [dist]: text }))
+    // Update the inclusions data
+    let current: Record<string, string[]> = {}
+    try { current = JSON.parse(form.distanceInclusions || '{}') } catch {}
+    const items = current[dist] || []
+    // Replace 'Other' placeholder or existing custom item with the new text
+    const hasOtherPlaceholder = items.includes('Other')
+    const existingCustomIdx = items.findIndex(i => !standardInclusions.includes(i))
+    let newItems: string[]
+    if (hasOtherPlaceholder) {
+      // Replace 'Other' placeholder with the custom text
+      newItems = items.map(i => i === 'Other' ? text : i).filter(Boolean)
+    } else if (existingCustomIdx >= 0) {
+      // Replace existing custom item with new text
+      newItems = items.map((i, idx) => idx === existingCustomIdx ? text : i).filter(Boolean)
+    } else {
+      // No existing custom, just add the text
+      if (text) newItems = [...items, text]
+      else newItems = [...items]
+    }
+    // Remove empty strings
+    newItems = newItems.filter(i => i.trim() !== '')
+    current[dist] = newItems
+    setForm(prev => ({ ...prev, distanceInclusions: JSON.stringify(current) }))
+  }
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -527,6 +687,7 @@ export default function AdminEventsPage() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogTitle>{selectedEvent ? 'Edit Event' : 'Add Event'}</DialogTitle>
           <div className="space-y-4 mt-4">
+            {/* Section 1: Title & Location */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Title</Label>
@@ -538,401 +699,603 @@ export default function AdminEventsPage() {
               </div>
             </div>
 
-            {/* Race Schedule */}
+            {/* Section 2: Race Schedule */}
             <div className="border rounded-lg p-4 bg-gray-50">
               <p className="text-sm font-semibold text-gray-700 mb-3">Race Schedule</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Race Date</Label>
-                  <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+                  <Label>Race Date <span className="text-red-400">*</span></Label>
+                  <DatePicker
+                    value={form.date}
+                    onChange={(val) => setForm({ ...form, date: val })}
+                    placeholder="Select Race Date"
+                    required
+                    eventDates={events.map((e) => ({
+                      date: e.date,
+                      status: (e.status === 'upcoming' ? 'upcoming' : 'past') as 'upcoming' | 'past',
+                      title: e.title,
+                    }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Race Time</Label>
-                  <Input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
+                  <TimeRangePicker
+                    startValue={form.time}
+                    endValue={form.timeEnd}
+                    onStartChange={(val) => setForm({ ...form, time: val })}
+                    onEndChange={(val) => setForm({ ...form, timeEnd: val })}
+                  />
                 </div>
               </div>
             </div>
 
-            {/* Registration Close */}
+            {/* Section 3: Registration Deadline */}
             <div className="border rounded-lg p-4 bg-blue-50">
               <p className="text-sm font-semibold text-blue-700 mb-3">Registration Deadline</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Registration Close Date</Label>
-                  <Input type="date" value={form.regCloseDate} onChange={(e) => setForm({ ...form, regCloseDate: e.target.value })} />
+                  <Label>Registration Close Date <span className="text-red-400">*</span></Label>
+                  <DatePicker
+                    value={form.regCloseDate}
+                    onChange={(val) => setForm({ ...form, regCloseDate: val })}
+                    placeholder="Select Deadline Date"
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Registration Close Time</Label>
-                  <Input type="time" value={form.regCloseTime} onChange={(e) => setForm({ ...form, regCloseTime: e.target.value })} />
+                  <div className="flex justify-center">
+                    <TimePicker
+                      value={form.regCloseTime}
+                      onChange={(val) => setForm({ ...form, regCloseTime: val })}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Registration Pricing */}
+            {/* Section 4: Distance & Pricing */}
             <div className="border rounded-lg p-4 bg-orange-50">
-              <p className="text-sm font-semibold text-orange-700 mb-3">Registration Pricing</p>
+              <p className="text-sm font-semibold text-orange-700 mb-3">Distance & Pricing</p>
 
-              {/* Registration Type Toggle */}
-              <div className="flex items-center gap-4 mb-3">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="regType"
-                    checked={!form.isPackage}
-                    onChange={() => setForm({ ...form, isPackage: false })}
-                    className="text-orange-500"
-                  />
-                  <span className="text-sm font-medium">Standard Registration</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="regType"
-                    checked={form.isPackage}
-                    onChange={() => setForm({ ...form, isPackage: true })}
-                    className="text-orange-500"
-                  />
-                  <span className="text-sm font-medium">Complete Package</span>
-                </label>
+              {/* Distances Sub-header */}
+              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Distances</p>
+
+              {/* Distance Toggle Pills */}
+              <div className="flex flex-wrap gap-2 mb-3">
+                {[...standardDistances, 'Other'].map((dist) => {
+                  const isSelected = selectedDistances.includes(dist)
+                  const isOther = dist === 'Other'
+                  return (
+                    <button
+                      key={dist}
+                      type="button"
+                      onClick={() => {
+                        if (isOther) {
+                          handleDistanceOtherCheck(!selectedDistances.includes('Other'))
+                        } else {
+                          toggleDistance(dist)
+                        }
+                      }}
+                      className={cn(
+                        'inline-flex items-center gap-1 px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 border-2',
+                        isSelected
+                          ? 'bg-orange-600 text-white border-orange-600 shadow-sm'
+                          : 'bg-white text-gray-700 border-gray-200 hover:border-orange-300 hover:text-orange-600'
+                      )}
+                    >
+                      {isOther && <PlusCircle className="w-3.5 h-3.5" />}
+                      {dist}
+                    </button>
+                  )
+                })}
               </div>
 
-              {!form.isPackage ? (
-                <>
-                  {/* Standard Registration */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label>Registration Fee (₱)</Label>
-                      <Input type="number" value={form.basePrice} onChange={(e) => setForm({ ...form, basePrice: Number(e.target.value) })} placeholder="500" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label><span className="font-bold text-orange-700">Optional Add-on:</span> Finisher Shirt (₱)</Label>
-                      <Input type="number" value={form.finisherShirtPrice} onChange={(e) => setForm({ ...form, finisherShirtPrice: Number(e.target.value) })} placeholder="500" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label><span className="font-bold text-orange-700">Optional Add-on:</span> Race Singlet (₱)</Label>
-                      <Input type="number" value={form.singletPrice} onChange={(e) => setForm({ ...form, singletPrice: Number(e.target.value) })} placeholder="500" />
-                    </div>
-                  </div>
-
-                  {/* Distance Pricing for Standard */}
-                  <div className="mt-4 border-t pt-4">
-                    <p className="text-sm font-semibold text-orange-700 mb-2">Distance Pricing</p>
-                    <p className="text-xs text-gray-500 mb-3">Set the registration fee for each distance. If left empty, the default fee will be used.</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {selectedDistances.filter(d => d !== 'Other').map((dist) => {
-                        const pricing = form.distancePricing ? (() => { try { return JSON.parse(form.distancePricing) } catch { return {} } })() : {}
-                        return (
-                          <div key={dist} className="space-y-1">
-                            <Label className="text-xs">{dist} Fee (₱)</Label>
-                            <Input
-                              type="number"
-                              value={pricing[dist] || ''}
-                              onChange={(e) => {
-                                const newPricing = { ...pricing, [dist]: Number(e.target.value) || 0 }
-                                setForm({ ...form, distancePricing: JSON.stringify(newPricing) })
-                              }}
-                              placeholder={String(form.basePrice || 0)}
-                            />
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Finisher Shirt Sizes */}
-                  <div className="mt-4">
-                    <div className="space-y-2">
-                      <Label>Finisher Shirt Sizes</Label>
-                      <div className="border rounded-lg p-3 bg-white space-y-2">
-                        <div className="flex flex-wrap gap-2">
-                          {standardShirtSizes.map((size) => (
-                            <label key={size} className="flex items-center gap-1.5 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={finisherShirtSelectedSizes.includes(size)}
-                                onChange={() => toggleFinisherShirtSize(size)}
-                                className="rounded border-gray-300"
-                              />
-                              <span className="text-sm">{size}</span>
-                            </label>
-                          ))}
-                        </div>
-                        <div className="flex items-center gap-2 pt-1 border-t">
-                          <label className="flex items-center gap-1.5 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={finisherShirtSelectedSizes.includes('Other')}
-                              onChange={(e) => handleFinisherShirtOtherCheck(e.target.checked)}
-                              className="rounded border-gray-300"
-                            />
-                            <span className="text-sm font-medium">Other</span>
-                          </label>
-                          {finisherShirtSelectedSizes.includes('Other') && (
-                            <Input
-                              value={finisherShirtOtherSize}
-                              onChange={(e) => handleFinisherShirtOtherText(e.target.value)}
-                              placeholder="Enter custom size"
-                              className="flex-1 h-8 text-sm"
-                            />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Singlet Sizes */}
-                  <div className="mt-4">
-                    <div className="space-y-2">
-                      <Label>Race Singlet Sizes</Label>
-                      <div className="border rounded-lg p-3 bg-white space-y-2">
-                        <div className="flex flex-wrap gap-2">
-                          {standardShirtSizes.map((size) => (
-                            <label key={size} className="flex items-center gap-1.5 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={singletSelectedSizes.includes(size)}
-                                onChange={() => toggleSingletSize(size)}
-                                className="rounded border-gray-300"
-                              />
-                              <span className="text-sm">{size}</span>
-                            </label>
-                          ))}
-                        </div>
-                        <div className="flex items-center gap-2 pt-1 border-t">
-                          <label className="flex items-center gap-1.5 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={singletSelectedSizes.includes('Other')}
-                              onChange={(e) => handleSingletOtherCheck(e.target.checked)}
-                              className="rounded border-gray-300"
-                            />
-                            <span className="text-sm font-medium">Other</span>
-                          </label>
-                          {singletSelectedSizes.includes('Other') && (
-                            <Input
-                              value={singletOtherSize}
-                              onChange={(e) => handleSingletOtherText(e.target.value)}
-                              placeholder="Enter custom size"
-                              className="flex-1 h-8 text-sm"
-                            />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {form.basePrice > 0 && (
-                    <p className="text-xs text-orange-600 mt-3 font-medium">
-                      Max total: ₱{([form.basePrice, form.finisherShirtPrice, form.singletPrice].reduce((a, b) => a + b, 0)).toLocaleString()} (with all add-ons)
-                    </p>
-                  )}
-                </>
-              ) : (
-                <>
-                  {/* Complete Package */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label>Package Fee (₱)</Label>
-                      <Input type="number" value={form.basePrice} onChange={(e) => setForm({ ...form, basePrice: Number(e.target.value) })} placeholder="500" />
-                    </div>
-                  </div>
-
-                  {/* Distance Pricing for Package */}
-                  <div className="mt-4 border-t pt-4">
-                    <p className="text-sm font-semibold text-orange-700 mb-2">Distance Pricing</p>
-                    <p className="text-xs text-gray-500 mb-3">Set the package fee for each distance. If left empty, the default fee will be used.</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {selectedDistances.filter(d => d !== 'Other').map((dist) => {
-                        const pricing = form.distancePricing ? (() => { try { return JSON.parse(form.distancePricing) } catch { return {} } })() : {}
-                        return (
-                          <div key={dist} className="space-y-1">
-                            <Label className="text-xs">{dist} Package (₱)</Label>
-                            <Input
-                              type="number"
-                              value={pricing[dist] || ''}
-                              onChange={(e) => {
-                                const newPricing = { ...pricing, [dist]: Number(e.target.value) || 0 }
-                                setForm({ ...form, distancePricing: JSON.stringify(newPricing) })
-                              }}
-                              placeholder={String(form.basePrice || 0)}
-                            />
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Included Sizes (no prices) */}
-                  <div className="mt-4 border-t pt-4">
-                    <p className="text-sm font-semibold text-orange-700 mb-2">Included Sizes</p>
-                    <p className="text-xs text-gray-500 mb-3">Select available sizes for items included in the package.</p>
-                  </div>
-
-                  {/* Finisher Shirt Sizes */}
-                  <div className="mt-4">
-                    <div className="space-y-2">
-                      <Label>Finisher Shirt Sizes</Label>
-                      <div className="border rounded-lg p-3 bg-white space-y-2">
-                        <div className="flex flex-wrap gap-2">
-                          {standardShirtSizes.map((size) => (
-                            <label key={size} className="flex items-center gap-1.5 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={finisherShirtSelectedSizes.includes(size)}
-                                onChange={() => toggleFinisherShirtSize(size)}
-                                className="rounded border-gray-300"
-                              />
-                              <span className="text-sm">{size}</span>
-                            </label>
-                          ))}
-                        </div>
-                        <div className="flex items-center gap-2 pt-1 border-t">
-                          <label className="flex items-center gap-1.5 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={finisherShirtSelectedSizes.includes('Other')}
-                              onChange={(e) => handleFinisherShirtOtherCheck(e.target.checked)}
-                              className="rounded border-gray-300"
-                            />
-                            <span className="text-sm font-medium">Other</span>
-                          </label>
-                          {finisherShirtSelectedSizes.includes('Other') && (
-                            <Input
-                              value={finisherShirtOtherSize}
-                              onChange={(e) => handleFinisherShirtOtherText(e.target.value)}
-                              placeholder="Enter custom size"
-                              className="flex-1 h-8 text-sm"
-                            />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Singlet Sizes */}
-                  <div className="mt-4">
-                    <div className="space-y-2">
-                      <Label>Race Singlet Sizes</Label>
-                      <div className="border rounded-lg p-3 bg-white space-y-2">
-                        <div className="flex flex-wrap gap-2">
-                          {standardShirtSizes.map((size) => (
-                            <label key={size} className="flex items-center gap-1.5 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={singletSelectedSizes.includes(size)}
-                                onChange={() => toggleSingletSize(size)}
-                                className="rounded border-gray-300"
-                              />
-                              <span className="text-sm">{size}</span>
-                            </label>
-                          ))}
-                        </div>
-                        <div className="flex items-center gap-2 pt-1 border-t">
-                          <label className="flex items-center gap-1.5 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={singletSelectedSizes.includes('Other')}
-                              onChange={(e) => handleSingletOtherCheck(e.target.checked)}
-                              className="rounded border-gray-300"
-                            />
-                            <span className="text-sm font-medium">Other</span>
-                          </label>
-                          {singletSelectedSizes.includes('Other') && (
-                            <Input
-                              value={singletOtherSize}
-                              onChange={(e) => handleSingletOtherText(e.target.value)}
-                              placeholder="Enter custom size"
-                              className="flex-1 h-8 text-sm"
-                            />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </>
+              {/* Other Distance Input */}
+              {selectedDistances.includes('Other') && (
+                <div className="mb-3">
+                  <Input
+                    value={otherDistance}
+                    onChange={(e) => handleDistanceOtherText(e.target.value)}
+                    placeholder="Enter custom distance (e.g., 15K)"
+                    className="max-w-xs h-9 text-sm"
+                  />
+                </div>
               )}
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Price Range</Label>
-                <div className="h-10 px-3 flex items-center rounded-md border bg-gray-50 text-sm text-gray-700">
-                  {form.priceRange ? (
-                    form.priceRange
-                  ) : (
-                    <span className="text-gray-400">Set Registration Fee to auto-calculate</span>
+              {/* Selected Distances as Removable Chips */}
+              {selectedDistances.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-4">
+                  {sortDistances(selectedDistances.filter(d => d !== 'Other')).map((dist) => (
+                    <span
+                      key={dist}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-200"
+                    >
+                      {dist}
+                      <button
+                        type="button"
+                        onClick={() => toggleDistance(dist)}
+                        className="ml-0.5 text-orange-400 hover:text-orange-700 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                  {selectedDistances.includes('Other') && otherDistance && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-200">
+                      {otherDistance}
+                      <button
+                        type="button"
+                        onClick={() => handleDistanceOtherCheck(false)}
+                        className="ml-0.5 text-orange-400 hover:text-orange-700 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
                   )}
                 </div>
-                <input type="hidden" value={form.priceRange} />
-              </div>
-              <div className="space-y-2">
-                <Label>Distances</Label>
-                <div className="border rounded-lg p-3 bg-white space-y-2">
-                  <div className="flex flex-wrap gap-2">
-                    {standardDistances.map((dist) => (
-                      <label key={dist} className="flex items-center gap-1.5 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedDistances.includes(dist)}
-                          onChange={() => toggleDistance(dist)}
-                          className="rounded border-gray-300"
-                        />
-                        <span className="text-sm">{dist}</span>
-                      </label>
-                    ))}
+              )}
+
+              {/* Registration Fee Per Distance - Only shows when at least one distance is selected */}
+              {selectedDistances.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-bold text-orange-700 uppercase tracking-wide mb-3">Registration Fee Per Distance</p>
+
+                  {/* Distance Pricing Cards */}
+                  <div className="space-y-3 mb-4">
+                    {sortDistances(selectedDistances.filter(d => d !== 'Other')).map((dist) => {
+                      const pricing = form.distancePricing ? (() => { try { return JSON.parse(form.distancePricing) } catch { return {} } })() : {}
+                      const inclusions = getInclusions(dist)
+                      const isDropdownOpen = openInclusionDropdown === dist
+                      const hasOtherInclusion = inclusions.some(i => !standardInclusions.includes(i))
+                      return (
+                        <div key={dist} className="p-3 rounded-lg bg-white border border-orange-100">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold bg-orange-600 text-white min-w-[48px]">
+                              {dist}
+                            </span>
+                            <span className="text-sm font-semibold text-gray-500">₱</span>
+                            <Input
+                              type="number"
+                              value={pricing[dist] || ''}
+                              onChange={(e) => {
+                                const newPricing = { ...pricing, [dist]: Number(e.target.value) || 0 }
+                                setForm({ ...form, distancePricing: JSON.stringify(newPricing) })
+                              }}
+                              placeholder={form.isPackage ? String(form.basePrice || 0) : '0'}
+                              className="flex-1 h-8 text-sm border-orange-200 focus:border-orange-400"
+                            />
+                          </div>
+                          {/* Inclusions Dropdown */}
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={() => setOpenInclusionDropdown(isDropdownOpen ? null : dist)}
+                              className="flex items-center justify-between w-full px-3 py-1.5 text-xs rounded-md border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors"
+                            >
+                              <span className="text-gray-600 font-medium">
+                                Inclusions{inclusions.length > 0 ? ` (${inclusions.length})` : ''}
+                              </span>
+                              <ChevronDown className={cn('w-3.5 h-3.5 text-gray-400 transition-transform', isDropdownOpen && 'rotate-180')} />
+                            </button>
+                            {isDropdownOpen && (
+                              <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-2 space-y-1">
+                                {standardInclusions.map((item) => {
+                                  const isOther = item === 'Other'
+                                  // For "Other", check if there's a custom item or 'Other' placeholder in inclusions
+                                  const isSelected = isOther
+                                    ? (hasOtherInclusion || inclusions.includes('Other'))
+                                    : inclusions.includes(item)
+                                  return (
+                                    <div key={item}>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (isOther) {
+                                            if (isSelected) {
+                                              // Remove the custom item / 'Other' placeholder
+                                              const filtered = inclusions.filter(i => standardInclusions.includes(i) && i !== 'Other')
+                                              let current: Record<string, string[]> = {}
+                                              try { current = JSON.parse(form.distanceInclusions || '{}') } catch {}
+                                              current[dist] = filtered
+                                              setForm(prev => ({ ...prev, distanceInclusions: JSON.stringify(current) }))
+                                              setOtherInclusions(prev => {
+                                                const copy = { ...prev }
+                                                delete copy[dist]
+                                                return copy
+                                              })
+                                            } else {
+                                              toggleInclusion(dist, 'Other')
+                                            }
+                                          } else {
+                                            toggleInclusion(dist, item)
+                                          }
+                                        }}
+                                        className={cn(
+                                          'flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs font-medium transition-colors',
+                                          isSelected
+                                            ? 'bg-orange-50 text-orange-700'
+                                            : 'text-gray-600 hover:bg-gray-50'
+                                        )}
+                                      >
+                                        <span className={cn(
+                                          'flex items-center justify-center w-4 h-4 rounded border transition-colors',
+                                          isSelected
+                                            ? 'bg-orange-500 border-orange-500 text-white'
+                                            : 'border-gray-300'
+                                        )}>
+                                          {isSelected && <Check className="w-3 h-3" />}
+                                        </span>
+                                        {item}
+                                      </button>
+                                      {/* "Other" custom input - show when Other is checked */}
+                                      {isOther && isSelected && (
+                                        <Input
+                                          value={otherInclusions[dist] || ''}
+                                          onChange={(e) => setOtherInclusionText(dist, e.target.value)}
+                                          placeholder="Enter custom inclusion"
+                                          className="mt-1 ml-6 h-7 text-xs max-w-[200px]"
+                                          onClick={(e) => e.stopPropagation()}
+                                        />
+                                      )}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
+                          {/* Show selected inclusions as tags */}
+                          {inclusions.length > 0 && !isDropdownOpen && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {inclusions.map((inc, idx) => (
+                                <span key={idx} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-50 text-orange-600 border border-orange-100">
+                                  {inc}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (standardInclusions.includes(inc)) {
+                                        toggleInclusion(dist, inc)
+                                      } else {
+                                        // Remove custom item
+                                        const filtered = inclusions.filter((_, i) => i !== idx)
+                                        let current: Record<string, string[]> = {}
+                                        try { current = JSON.parse(form.distanceInclusions || '{}') } catch {}
+                                        current[dist] = filtered
+                                        setForm(prev => ({ ...prev, distanceInclusions: JSON.stringify(current) }))
+                                        setOtherInclusions(prev => {
+                                          const copy = { ...prev }
+                                          delete copy[dist]
+                                          return copy
+                                        })
+                                      }
+                                    }}
+                                    className="ml-0.5 text-orange-400 hover:text-orange-700"
+                                  >
+                                    <X className="w-2.5 h-2.5" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
-                  <div className="flex items-center gap-2 pt-1 border-t">
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedDistances.includes('Other')}
-                        onChange={(e) => handleDistanceOtherCheck(e.target.checked)}
-                        className="rounded border-gray-300"
+
+                  {/* Package Registration Toggle */}
+                  <div className="flex items-center justify-between py-3 border-t border-orange-200/60">
+                    <div>
+                      <span className="text-sm font-semibold text-gray-800">Package Registration</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, isPackage: !form.isPackage })}
+                      className={cn(
+                        'relative w-11 h-6 rounded-full transition-colors duration-200',
+                        form.isPackage ? 'bg-emerald-500' : 'bg-gray-300'
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200',
+                          form.isPackage ? 'translate-x-5' : 'translate-x-0'
+                        )}
                       />
-                      <span className="text-sm font-medium">Other</span>
-                    </label>
-                    {selectedDistances.includes('Other') && (
-                      <Input
-                        value={otherDistance}
-                        onChange={(e) => handleDistanceOtherText(e.target.value)}
-                        placeholder="Enter custom distance"
-                        className="flex-1 h-8 text-sm"
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 -mt-1 mb-4">
+                    {form.isPackage
+                      ? 'Package Registration — Registration includes everything (no optional add-ons)'
+                      : 'Non-Package Registration — Registration fee per distance, with optional add-ons'}
+                  </p>
+
+                  {!form.isPackage ? (
+                    <>
+                      {/* Standard Mode: Optional Add-ons */}
+                      <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-3">Optional Add-ons</p>
+
+                      {/* Finisher Shirt: Pill Sizes + Price */}
+                      <div className="mb-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-semibold">Finisher Shirt</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {[...standardShirtSizes, 'Other'].map((size) => {
+                              const isSelected = finisherShirtSelectedSizes.includes(size)
+                              return (
+                                <button
+                                  key={size}
+                                  type="button"
+                                  onClick={() => {
+                                    if (size === 'Other') {
+                                      handleFinisherShirtOtherCheck(!finisherShirtSelectedSizes.includes('Other'))
+                                    } else {
+                                      toggleFinisherShirtSize(size)
+                                    }
+                                  }}
+                                  className={cn(
+                                    'inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 border-2',
+                                    isSelected
+                                      ? 'bg-orange-600 text-white border-orange-600 shadow-sm'
+                                      : 'bg-white text-gray-700 border-gray-200 hover:border-orange-300 hover:text-orange-600'
+                                  )}
+                                >
+                                  {size === 'Other' && <PlusCircle className="w-3 h-3" />}
+                                  {size}
+                                </button>
+                              )
+                            })}
+                          </div>
+                          {finisherShirtSelectedSizes.includes('Other') && (
+                            <Input
+                              value={finisherShirtOtherSize}
+                              onChange={(e) => handleFinisherShirtOtherText(e.target.value)}
+                              placeholder="Enter custom size"
+                              className="max-w-xs h-8 text-sm"
+                            />
+                          )}
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-gray-500">₱</span>
+                            <Input
+                              type="number"
+                              value={form.finisherShirtPrice || ''}
+                              onChange={(e) => setForm({ ...form, finisherShirtPrice: Number(e.target.value) })}
+                              placeholder="0"
+                              className="max-w-[120px] h-8 text-sm"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Race Singlet: Pill Sizes + Price */}
+                      <div className="mb-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-semibold">Race Singlet</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {[...standardSingletSizes, 'Other'].map((size) => {
+                              const isSelected = singletSelectedSizes.includes(size)
+                              return (
+                                <button
+                                  key={size}
+                                  type="button"
+                                  onClick={() => {
+                                    if (size === 'Other') {
+                                      handleSingletOtherCheck(!singletSelectedSizes.includes('Other'))
+                                    } else {
+                                      toggleSingletSize(size)
+                                    }
+                                  }}
+                                  className={cn(
+                                    'inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 border-2',
+                                    isSelected
+                                      ? 'bg-orange-600 text-white border-orange-600 shadow-sm'
+                                      : 'bg-white text-gray-700 border-gray-200 hover:border-orange-300 hover:text-orange-600'
+                                  )}
+                                >
+                                  {size === 'Other' && <PlusCircle className="w-3 h-3" />}
+                                  {size}
+                                </button>
+                              )
+                            })}
+                          </div>
+                          {singletSelectedSizes.includes('Other') && (
+                            <Input
+                              value={singletOtherSize}
+                              onChange={(e) => handleSingletOtherText(e.target.value)}
+                              placeholder="Enter custom size"
+                              className="max-w-xs h-8 text-sm"
+                            />
+                          )}
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-gray-500">₱</span>
+                            <Input
+                              type="number"
+                              value={form.singletPrice || ''}
+                              onChange={(e) => setForm({ ...form, singletPrice: Number(e.target.value) })}
+                              placeholder="0"
+                              className="max-w-[120px] h-8 text-sm"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-gray-500 italic">
+                        Add-ons are not included in the registration fee. Participants can choose to add them during registration.
+                      </p>
+
+                      {/* Max total for Standard */}
+                      {(getMaxDistanceFee() > 0 || form.finisherShirtPrice > 0 || form.singletPrice > 0) && (
+                        <p className="text-xs text-orange-600 mt-2 font-medium">
+                          Max total: ₱{(getMaxDistanceFee() + form.finisherShirtPrice + form.singletPrice).toLocaleString()} (highest distance fee + all add-ons)
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {/* Package Mode: Package Fee + Included Sizes */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                        <div className="space-y-2">
+                          <Label>Package Fee (₱)</Label>
+                          <Input type="number" value={form.basePrice} onChange={(e) => setForm({ ...form, basePrice: Number(e.target.value) })} placeholder="500" />
+                        </div>
+                      </div>
+
+                      {/* Included Sizes */}
+                      <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide mb-3">Included Sizes</p>
+
+                      {/* Finisher Shirt Sizes - Pill Buttons */}
+                      <div className="mb-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-semibold">Finisher Shirt Sizes</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {[...standardShirtSizes, 'Other'].map((size) => {
+                              const isSelected = finisherShirtSelectedSizes.includes(size)
+                              return (
+                                <button
+                                  key={size}
+                                  type="button"
+                                  onClick={() => {
+                                    if (size === 'Other') {
+                                      handleFinisherShirtOtherCheck(!finisherShirtSelectedSizes.includes('Other'))
+                                    } else {
+                                      toggleFinisherShirtSize(size)
+                                    }
+                                  }}
+                                  className={cn(
+                                    'inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 border-2',
+                                    isSelected
+                                      ? 'bg-orange-600 text-white border-orange-600 shadow-sm'
+                                      : 'bg-white text-gray-700 border-gray-200 hover:border-orange-300 hover:text-orange-600'
+                                  )}
+                                >
+                                  {size === 'Other' && <PlusCircle className="w-3 h-3" />}
+                                  {size}
+                                </button>
+                              )
+                            })}
+                          </div>
+                          {finisherShirtSelectedSizes.includes('Other') && (
+                            <Input
+                              value={finisherShirtOtherSize}
+                              onChange={(e) => handleFinisherShirtOtherText(e.target.value)}
+                              placeholder="Enter custom size"
+                              className="max-w-xs h-8 text-sm"
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Race Singlet Sizes - Pill Buttons */}
+                      <div className="mb-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-semibold">Race Singlet Sizes</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {[...standardSingletSizes, 'Other'].map((size) => {
+                              const isSelected = singletSelectedSizes.includes(size)
+                              return (
+                                <button
+                                  key={size}
+                                  type="button"
+                                  onClick={() => {
+                                    if (size === 'Other') {
+                                      handleSingletOtherCheck(!singletSelectedSizes.includes('Other'))
+                                    } else {
+                                      toggleSingletSize(size)
+                                    }
+                                  }}
+                                  className={cn(
+                                    'inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 border-2',
+                                    isSelected
+                                      ? 'bg-orange-600 text-white border-orange-600 shadow-sm'
+                                      : 'bg-white text-gray-700 border-gray-200 hover:border-orange-300 hover:text-orange-600'
+                                  )}
+                                >
+                                  {size === 'Other' && <PlusCircle className="w-3 h-3" />}
+                                  {size}
+                                </button>
+                              )
+                            })}
+                          </div>
+                          {singletSelectedSizes.includes('Other') && (
+                            <Input
+                              value={singletOtherSize}
+                              onChange={(e) => handleSingletOtherText(e.target.value)}
+                              placeholder="Enter custom size"
+                              className="max-w-xs h-8 text-sm"
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-emerald-600 italic">
+                        Package includes all items. No additional add-ons needed during registration.
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Hidden price range auto-calc */}
+              <input type="hidden" value={form.priceRange} />
+            </div>
+
+            {/* Section 5: Other Details */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
+              </div>
+              <ImageUpload
+                value={form.image}
+                onChange={(url) => setForm({ ...form, image: url })}
+                aspectRatio="16:9"
+                label="Event Image"
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="upcoming">Upcoming</SelectItem>
+                      <SelectItem value="past">Past</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between h-10">
+                    <span className="text-sm font-semibold text-gray-800">Featured Event</span>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, featured: !form.featured })}
+                      className={cn(
+                        'relative w-11 h-6 rounded-full transition-colors duration-200',
+                        form.featured ? 'bg-emerald-500' : 'bg-gray-300'
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200',
+                          form.featured ? 'translate-x-5' : 'translate-x-0'
+                        )}
                       />
-                    )}
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
-            </div>
-            <ImageUpload
-              value={form.image}
-              onChange={(url) => setForm({ ...form, image: url })}
-              aspectRatio="16:9"
-              label="Event Image"
-            />
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="upcoming">Upcoming</SelectItem>
-                  <SelectItem value="past">Past</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="featured"
-                checked={form.featured}
-                onCheckedChange={(checked) => setForm({ ...form, featured: !!checked })}
-              />
-              <Label htmlFor="featured">Featured Event</Label>
-            </div>
+
+            {/* View Summary Button */}
+            <Button
+              variant="outline"
+              onClick={() => setSummaryOpen(true)}
+              className="w-full font-semibold"
+            >
+              <Eye className="w-4 h-4 mr-2" />
+              View Summary
+            </Button>
+
             <div className="flex gap-3 pt-4">
               <Button
                 onClick={handleSave}
@@ -944,6 +1307,59 @@ export default function AdminEventsPage() {
               </Button>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Summary Dialog */}
+      <Dialog open={summaryOpen} onOpenChange={setSummaryOpen}>
+        <DialogContent className="max-w-md">
+          <DialogTitle>Event Summary</DialogTitle>
+          <div className="space-y-3 mt-4 text-sm">
+            <div><span className="font-semibold">Title:</span> {form.title || '—'}</div>
+            <div><span className="font-semibold">Location:</span> {form.location || '—'}</div>
+            <div><span className="font-semibold">Race Date:</span> {form.date || '—'}</div>
+            <div><span className="font-semibold">Race Time:</span> {form.time && form.timeEnd ? `${form.time} – ${form.timeEnd}` : '—'}</div>
+            <div><span className="font-semibold">Reg. Close:</span> {form.regCloseDate || '—'}{form.regCloseTime ? ` ${form.regCloseTime}` : ''}</div>
+            <div><span className="font-semibold">Distances:</span> {form.distances || '—'}</div>
+            <div><span className="font-semibold">Type:</span> {form.isPackage ? 'Package' : 'Standard'}</div>
+            {form.isPackage && form.basePrice > 0 && <div><span className="font-semibold">Package Fee:</span> ₱{form.basePrice.toLocaleString()}</div>}
+            {form.distancePricing && (() => {
+              try {
+                const p = JSON.parse(form.distancePricing)
+                return sortDistances(Object.keys(p)).map((dist) => (
+                  <div key={dist}><span className="font-semibold">{dist}:</span> ₱{(p[dist] as number).toLocaleString()}</div>
+                ))
+              } catch { return null }
+            })()}
+            {!form.isPackage && (form.finisherShirtPrice > 0 || form.singletPrice > 0) && (
+              <div>
+                <span className="font-semibold">Add-ons:</span>{' '}
+                {form.finisherShirtPrice > 0 && `Finisher Shirt ₱${form.finisherShirtPrice.toLocaleString()}`}
+                {form.finisherShirtPrice > 0 && form.singletPrice > 0 && ', '}
+                {form.singletPrice > 0 && `Race Singlet ₱${form.singletPrice.toLocaleString()}`}
+              </div>
+            )}
+            {form.distanceInclusions && (() => {
+              try {
+                const inc: Record<string, string[]> = JSON.parse(form.distanceInclusions)
+                const entries = Object.entries(inc).filter(([, items]) => items.length > 0)
+                if (entries.length === 0) return null
+                return (
+                  <div>
+                    <span className="font-semibold">Inclusions:</span>
+                    <div className="ml-4 mt-1">
+                      {entries.map(([dist, items]) => (
+                        <div key={dist} className="text-xs text-gray-600">{dist}: {items.join(', ')}</div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              } catch { return null }
+            })()}
+            <div><span className="font-semibold">Price Range:</span> {form.priceRange || '—'}</div>
+            <div><span className="font-semibold">Status:</span> {form.status}</div>
+            <div><span className="font-semibold">Featured:</span> {form.featured ? 'Yes' : 'No'}</div>
           </div>
         </DialogContent>
       </Dialog>

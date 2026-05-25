@@ -13,8 +13,18 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { useToast } from '@/hooks/use-toast'
-import { Loader2, Search, RefreshCw, ChevronLeft, ChevronRight, Database, Check, X, Pencil } from 'lucide-react'
+import { Loader2, Search, RefreshCw, ChevronLeft, ChevronRight, Database, Check, X, Pencil, Trash2 } from 'lucide-react'
 
 interface TableInfo {
   model: string
@@ -139,6 +149,11 @@ export default function DatabaseBrowserPage() {
   const [editValue, setEditValue] = useState('')
   const [saving, setSaving] = useState(false)
 
+  // Delete state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
   // Fetch table overview
   const fetchTables = useCallback(async () => {
     try {
@@ -162,7 +177,7 @@ export default function DatabaseBrowserPage() {
       setRecords(data.records || [])
       setTotalPages(data.totalPages || 1)
       setTotal(data.total || 0)
-      setReadOnly(data.readOnly || false)
+      setReadOnly(data.isReadOnly || false)
     } catch (error) {
       console.error('Failed to fetch records:', error)
     } finally {
@@ -243,6 +258,49 @@ export default function DatabaseBrowserPage() {
     }
   }
 
+  // Delete functionality
+  const openDeleteDialog = (id: string, label: string) => {
+    setDeleteTarget({ id, label })
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/admin-developer/database/${activeTab}?id=${deleteTarget.id}`, {
+        method: 'DELETE',
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        toast({
+          title: 'Delete Failed',
+          description: data.error || 'Failed to delete record',
+          variant: 'destructive',
+        })
+      } else {
+        toast({
+          title: 'Deleted',
+          description: `Record has been deleted successfully`,
+        })
+        await fetchRecords()
+        await fetchTables()
+      }
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Network error. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setDeleting(false)
+      setDeleteDialogOpen(false)
+      setDeleteTarget(null)
+    }
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       saveEditing()
@@ -281,6 +339,10 @@ export default function DatabaseBrowserPage() {
     return String(value)
   }
 
+  const getRecordLabel = (record: Record<string, unknown>): string => {
+    return String(record.title || record.name || record.participantName || record.orderNumber || record.key || record.id || 'this record')
+  }
+
   const columns = modelColumns[activeTab] || []
 
   return (
@@ -291,7 +353,7 @@ export default function DatabaseBrowserPage() {
             <Database className="w-8 h-8 text-teal-500" />
             Database Browser
           </h1>
-          <p className="text-gray-500 mt-1">View and edit all database records</p>
+          <p className="text-gray-500 mt-1">View, edit, and delete all database records</p>
         </div>
         <Button onClick={() => { fetchTables(); fetchRecords() }} variant="outline" className="font-semibold border-teal-200 text-teal-600 hover:bg-teal-50">
           <RefreshCw className="w-4 h-4 mr-2" />
@@ -337,7 +399,7 @@ export default function DatabaseBrowserPage() {
               <Badge className="bg-gray-500 text-white">Read Only</Badge>
             )}
             {!readOnly && (
-              <Badge className="bg-teal-500 text-white">Editable</Badge>
+              <Badge className="bg-teal-500 text-white">Editable + Deletable</Badge>
             )}
           </div>
 
@@ -357,19 +419,23 @@ export default function DatabaseBrowserPage() {
                         </span>
                       </TableHead>
                     ))}
+                    {/* Actions column - only show if not read-only */}
+                    {!readOnly && (
+                      <TableHead className="text-right">Actions</TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={columns.length} className="text-center py-8 text-gray-400">
+                      <TableCell colSpan={columns.length + (readOnly ? 0 : 1)} className="text-center py-8 text-gray-400">
                         <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
                         Loading records...
                       </TableCell>
                     </TableRow>
                   ) : records.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={columns.length} className="text-center py-8 text-gray-400">
+                      <TableCell colSpan={columns.length + (readOnly ? 0 : 1)} className="text-center py-8 text-gray-400">
                         <Database className="w-8 h-8 mx-auto mb-2 opacity-50" />
                         No records found.
                       </TableCell>
@@ -459,6 +525,20 @@ export default function DatabaseBrowserPage() {
                             </TableCell>
                           )
                         })}
+                        {/* Delete button */}
+                        {!readOnly && (
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openDeleteDialog(String(record.id), getRecordLabel(record))}
+                              className="text-red-400 hover:text-red-600 hover:bg-red-50"
+                              title="Delete record"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))
                   )}
@@ -481,6 +561,38 @@ export default function DatabaseBrowserPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Record</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>&quot;{deleteTarget?.label}&quot;</strong>? This action cannot be undone and will be logged in the system audit trail.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

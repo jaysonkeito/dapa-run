@@ -24,6 +24,7 @@ model Event {
   title       String
   date        String
   time        String
+  timeEnd     String   @default("")
   location    String
   priceRange  String
   image       String   @default("/hero-banner.png")
@@ -38,8 +39,9 @@ model Event {
   singletPrice    Int    @default(0)
   finisherShirtSizes String?
   singletSizes       String?
-  distancePricing  String  @default("")  // JSON: {"3K": 250, "5K": 350, "10K": 500}
-  isPackage        Boolean @default(false) // true = complete package (add-ons included)
+  distancePricing     String  @default("")  // JSON: {"3K": 250, "5K": 350, "10K": 500}
+  distanceInclusions  String  @default("")  // JSON: {"3K": ["Race Bib","Finishers Medal"], "5K": ["Race Bib","Post-Race Meal"]}
+  isPackage           Boolean @default(false) // true = complete package (add-ons included)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   results     RaceResult[]

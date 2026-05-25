@@ -49,6 +49,20 @@ async function main() {
   })
   console.log("Staff user created:", staffUser.email)
 
+  // Create a developer user
+  const devPassword = await bcrypt.hash("Jayson@10052004.", 12)
+  const devUser = await prisma.user.upsert({
+    where: { email: "jayson.f.bsinfotech@gmail.com" },
+    update: {},
+    create: {
+      email: "jayson.f.bsinfotech@gmail.com",
+      name: "Developer",
+      password: devPassword,
+      role: "developer",
+    },
+  })
+  console.log("Developer user created:", devUser.email)
+
   // Create upcoming events
   const upcomingEventsData = [
     {

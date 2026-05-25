@@ -78,6 +78,7 @@ export default function PreviousEventsPage() {
           title: e.title as string,
           date: e.date as string,
           time: e.time as string,
+          timeEnd: (e as Record<string, unknown>).timeEnd as string || '',
           location: e.location as string,
           priceRange: e.priceRange as string,
           image: e.image as string,
@@ -229,12 +230,21 @@ export default function PreviousEventsPage() {
 
       {/* Calendar Dialog */}
       <Dialog open={calendarOpen} onOpenChange={setCalendarOpen}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
           <DialogTitle>Events Calendar</DialogTitle>
           <div className="mt-4">
-            <CalendarView events={allEvents} onEventClick={() => {
-              setCalendarOpen(false)
-            }} />
+            <CalendarView
+              events={allEvents}
+              onEventClick={(event) => {
+                setCalendarOpen(false)
+                if (event.status === 'past') {
+                  handleViewResults(event.id)
+                } else {
+                  setCurrentPage('upcoming')
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }
+              }}
+            />
           </div>
         </DialogContent>
       </Dialog>
@@ -242,7 +252,11 @@ export default function PreviousEventsPage() {
   )
 }
 
-function CalendarView({ events, onEventClick }: { events: EventData[], onEventClick: (e: EventData) => void }) {
+interface CalendarEvent extends EventData {
+  timeEnd?: string
+}
+
+function CalendarView({ events, onEventClick }: { events: CalendarEvent[], onEventClick: (e: CalendarEvent) => void }) {
   const [currentMonth, setCurrentMonth] = useState(new Date())
 
   const year = currentMonth.getFullYear()
@@ -252,9 +266,10 @@ function CalendarView({ events, onEventClick }: { events: EventData[], onEventCl
 
   const prevMonth = () => setCurrentMonth(new Date(year, month - 1, 1))
   const nextMonth = () => setCurrentMonth(new Date(year, month + 1, 1))
+  const goToThisMonth = () => setCurrentMonth(new Date())
 
   // Parse event dates and group by date string
-  const eventsByDate: Record<string, EventData[]> = {}
+  const eventsByDate: Record<string, CalendarEvent[]> = {}
   events.forEach(event => {
     let dateStr = ''
     try {
@@ -275,63 +290,124 @@ function CalendarView({ events, onEventClick }: { events: EventData[], onEventCl
   const monthName = currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
+  // Format time for display
+  const formatTimeRange = (event: CalendarEvent) => {
+    const start = event.time || ''
+    const end = event.timeEnd || ''
+    if (start && end) {
+      return `${start} - ${end}`
+    }
+    return start
+  }
+
+  // Convert time to lowercase am/pm for display
+  const formatTimeShort = (timeStr: string) => {
+    if (!timeStr) return ''
+    return timeStr.replace(/\s*(AM|PM)/i, (match) => match.toLowerCase())
+  }
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <button onClick={prevMonth} className="p-2 hover:bg-gray-100 rounded-lg">
+      {/* Header with navigation */}
+      <div className="flex items-center justify-between mb-6">
+        <button onClick={prevMonth} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
           <ChevronLeft className="w-5 h-5" />
         </button>
-        <h3 className="text-lg font-bold text-gray-900">{monthName}</h3>
-        <button onClick={nextMonth} className="p-2 hover:bg-gray-100 rounded-lg">
+        <div className="flex items-center gap-3">
+          <h3 className="text-xl font-bold text-gray-900">{monthName}</h3>
+          <button
+            onClick={goToThisMonth}
+            className="px-3 py-1 text-xs font-medium bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+          >
+            This Month
+          </button>
+        </div>
+        <button onClick={nextMonth} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
           <ChevronRight className="w-5 h-5" />
         </button>
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 mb-3">
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-orange-500" />
-          <span className="text-xs text-gray-600">Upcoming</span>
+      <div className="flex items-center gap-6 mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-emerald-500" />
+          <span className="text-xs text-gray-600 font-medium">Upcoming Event</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-gray-400" />
-          <span className="text-xs text-gray-600">Past</span>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-gray-400" />
+          <span className="text-xs text-gray-600 font-medium">Past Event</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-orange-500" />
+          <span className="text-xs text-gray-600 font-medium">Today</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      {/* Calendar Grid */}
+      <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-xl overflow-hidden border border-gray-200">
+        {/* Day headers */}
         {dayNames.map(day => (
-          <div key={day} className="text-center text-xs font-medium text-gray-500 py-2">{day}</div>
+          <div key={day} className="bg-gray-50 text-center text-xs font-semibold text-gray-500 py-3 uppercase tracking-wider">
+            {day}
+          </div>
         ))}
+
+        {/* Empty cells for days before the 1st */}
         {Array.from({ length: firstDay }).map((_, i) => (
-          <div key={`empty-${i}`} />
+          <div key={`empty-${i}`} className="bg-gray-50 min-h-[100px]" />
         ))}
+
+        {/* Day cells */}
         {Array.from({ length: daysInMonth }).map((_, i) => {
           const day = i + 1
           const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
           const dayEvents = eventsByDate[dateStr] || []
           const isToday = new Date().toDateString() === new Date(year, month, day).toDateString()
+          const hasEvents = dayEvents.length > 0
 
           return (
             <div
               key={day}
-              className={`min-h-[60px] border rounded p-1 text-xs ${
-                isToday ? 'border-orange-500 bg-orange-50' : 'border-gray-200'
+              className={`bg-white min-h-[100px] p-2 transition-colors ${
+                hasEvents ? 'cursor-pointer hover:bg-orange-50/50' : ''
               }`}
             >
-              <div className={`font-medium ${isToday ? 'text-orange-600' : 'text-gray-700'}`}>{day}</div>
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className={`text-sm font-medium ${
+                  isToday
+                    ? 'bg-orange-500 text-white w-7 h-7 rounded-full flex items-center justify-center'
+                    : hasEvents
+                      ? 'text-gray-900 font-bold'
+                      : 'text-gray-500'
+                }`}>
+                  {day}
+                </span>
+                {hasEvents && !isToday && (
+                  <div className={`w-2 h-2 rounded-full ${
+                    dayEvents[0].status === 'upcoming' ? 'bg-emerald-500' : 'bg-gray-400'
+                  }`} />
+                )}
+              </div>
+
+              {/* Event indicators in cell */}
               {dayEvents.map(event => (
                 <button
                   key={event.id}
                   onClick={() => onEventClick(event)}
-                  className={`w-full text-left rounded px-1 py-0.5 mt-0.5 truncate ${
+                  className={`w-full text-left rounded-md px-2 py-1.5 mt-1 transition-all hover:scale-[1.02] ${
                     event.status === 'upcoming'
-                      ? 'bg-orange-500 text-white'
-                      : 'bg-gray-400 text-white'
+                      ? 'bg-emerald-50 border border-emerald-200 hover:border-emerald-400'
+                      : 'bg-gray-50 border border-gray-200 hover:border-gray-400'
                   }`}
-                  title={event.title}
                 >
-                  {event.title}
+                  <div className={`text-[10px] font-medium ${
+                    event.status === 'upcoming' ? 'text-emerald-600' : 'text-gray-500'
+                  }`}>
+                    {formatTimeShort(formatTimeRange(event))}
+                  </div>
+                  <div className="text-[11px] font-semibold text-gray-800 truncate leading-tight">
+                    {event.title}
+                  </div>
                 </button>
               ))}
             </div>

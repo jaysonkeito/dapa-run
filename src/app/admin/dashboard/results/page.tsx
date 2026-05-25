@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -35,17 +36,18 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Plus, Pencil, Trash2, Loader2, FileDown } from 'lucide-react'
+import { Plus, Pencil, Trash2, Loader2, FileDown, Search, Eye, Award } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useToast } from '@/hooks/use-toast'
 import { generateCSV, formatPriceForReport, formatDateForReport } from '@/lib/report-utils'
+import Certificate from '@/components/Certificate'
 
 interface RaceResult {
   id: string
   eventId: string
   distance: string
   finishers: string
-  event?: { id: string; title: string; date: string }
+  event?: { id: string; title: string; date: string; location: string }
 }
 
 interface Event {
@@ -61,9 +63,25 @@ interface Finisher {
   name: string
   time: string
   gender: string
+  genderRank?: number
+}
+
+interface BibSearchResult {
+  name: string
+  bib: string
+  gender: string
+  distance: string
+  time: string
+  genderRank: number
+  overallRank: number
+  eventName: string
+  eventDate: string
+  eventLocation: string
+  eventId: string
 }
 
 export default function AdminResultsPage() {
+  const router = useRouter()
   const { toast } = useToast()
   const { data: session } = useSession()
   const isAdmin = (session?.user as Record<string, unknown>)?.role === 'admin'
@@ -79,6 +97,13 @@ export default function AdminResultsPage() {
     { rank: 1, bib: '', name: '', time: '', gender: 'male' },
   ])
   const [saving, setSaving] = useState(false)
+
+  // Bib search state
+  const [bibSearch, setBibSearch] = useState('')
+  const [bibResults, setBibResults] = useState<BibSearchResult[]>([])
+  const [bibLoading, setBibLoading] = useState(false)
+  const [certificateOpen, setCertificateOpen] = useState(false)
+  const [selectedCert, setSelectedCert] = useState<BibSearchResult | null>(null)
 
   const fetchData = async () => {
     try {
@@ -215,6 +240,25 @@ export default function AdminResultsPage() {
     toast({ title: 'Report Generated', description: 'Race results report has been downloaded.' })
   }
 
+  const handleBibSearch = async () => {
+    if (!bibSearch.trim()) return
+    setBibLoading(true)
+    try {
+      const res = await fetch(`/api/results?bib=${encodeURIComponent(bibSearch.trim())}`)
+      const data = await res.json()
+      setBibResults(Array.isArray(data) ? data : [])
+    } catch {
+      setBibResults([])
+    } finally {
+      setBibLoading(false)
+    }
+  }
+
+  const openCertificate = (result: BibSearchResult) => {
+    setSelectedCert(result)
+    setCertificateOpen(true)
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -236,6 +280,62 @@ export default function AdminResultsPage() {
         </div>
       </div>
 
+      {/* Bib Search Section */}
+      <div className="bg-white rounded-xl shadow-md p-4 mb-6">
+        <p className="text-sm font-semibold text-gray-700 mb-3">Search by Race Bib Number</p>
+        <div className="flex gap-3">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              value={bibSearch}
+              onChange={(e) => setBibSearch(e.target.value)}
+              placeholder="Enter Bib Number (e.g., 1042)"
+              className="pl-10 h-9"
+              onKeyDown={(e) => e.key === 'Enter' && handleBibSearch()}
+            />
+          </div>
+          <Button
+            onClick={handleBibSearch}
+            disabled={bibLoading}
+            variant="outline"
+            className="border-orange-500 text-orange-600 hover:bg-orange-50 font-semibold"
+          >
+            {bibLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
+            Search
+          </Button>
+        </div>
+
+        {/* Bib Search Results */}
+        {bibResults.length > 0 && (
+          <div className="mt-4 space-y-2">
+            {bibResults.map((result, idx) => (
+              <div key={idx} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold text-sm">
+                    {result.bib}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">{result.name}</p>
+                    <p className="text-xs text-gray-500">{result.eventName} • {result.distance} • {result.time}</p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => openCertificate(result)}
+                  className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold text-xs h-8"
+                >
+                  <Award className="w-3.5 h-3.5 mr-1.5" />
+                  View Certificate
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+        {bibSearch && bibResults.length === 0 && !bibLoading && (
+          <p className="mt-3 text-sm text-gray-400">No runner found with Bib &quot;{bibSearch}&quot;</p>
+        )}
+      </div>
+
+      {/* Results Table */}
       <div className="bg-white rounded-xl shadow-md border-0 overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
@@ -261,17 +361,23 @@ export default function AdminResultsPage() {
                 </TableRow>
               ) : (
                 results.map((result) => (
-                  <TableRow key={result.id}>
+                  <TableRow key={result.id} className="cursor-pointer hover:bg-orange-50/50" onClick={() => router.push(`/admin/dashboard/events/${result.eventId}`)}>
                     <TableCell className="font-medium">
-                      {result.event?.title || getEventTitle(result.eventId)}
+                      <div className="flex items-center gap-2">
+                        <Eye className="w-4 h-4 text-orange-500" />
+                        {result.event?.title || getEventTitle(result.eventId)}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge className="bg-orange-500 text-white">{result.distance}</Badge>
                     </TableCell>
                     <TableCell className="text-sm text-gray-600">{getFinisherCount(result.finishers)} finishers</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       {isAdmin ? (
                         <div className="flex items-center justify-end gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => router.push(`/admin/dashboard/events/${result.eventId}`)} title="View Event">
+                            <Eye className="w-4 h-4 text-orange-500" />
+                          </Button>
                           <Button variant="ghost" size="icon" onClick={() => openEdit(result)}>
                             <Pencil className="w-4 h-4 text-gray-500" />
                           </Button>
@@ -280,7 +386,9 @@ export default function AdminResultsPage() {
                           </Button>
                         </div>
                       ) : (
-                        <span className="text-xs text-gray-400">View only</span>
+                        <Button variant="ghost" size="icon" onClick={() => router.push(`/admin/dashboard/events/${result.eventId}`)} title="View Event">
+                          <Eye className="w-4 h-4 text-orange-500" />
+                        </Button>
                       )}
                     </TableCell>
                   </TableRow>
@@ -378,6 +486,27 @@ export default function AdminResultsPage() {
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Certificate Dialog */}
+      <Dialog open={certificateOpen} onOpenChange={setCertificateOpen}>
+        <DialogContent className="max-w-[900px] max-h-[95vh] overflow-y-auto p-4">
+          <DialogTitle className="sr-only">Finisher E-Certificate</DialogTitle>
+          {selectedCert && (
+            <Certificate
+              runnerName={selectedCert.name}
+              eventName={selectedCert.eventName}
+              distance={selectedCert.distance}
+              time={selectedCert.time}
+              bib={selectedCert.bib}
+              gender={selectedCert.gender}
+              genderRank={selectedCert.genderRank}
+              overallRank={selectedCert.overallRank}
+              eventDate={selectedCert.eventDate}
+              eventLocation={selectedCert.eventLocation}
+            />
+          )}
         </DialogContent>
       </Dialog>
 
