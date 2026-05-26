@@ -11,19 +11,16 @@ function verifyWebhookSignature(
   timestampHeader: string
 ): boolean {
   if (!PAYMONGO_WEBHOOK_SECRET || PAYMONGO_WEBHOOK_SECRET === "whsk_your_secret_here") {
-    // In test mode without webhook secret configured, skip verification
     console.warn("Webhook signature verification skipped - no webhook secret configured")
     return true
   }
 
   try {
-    // PayMongo webhook signature format: t=timestamp,v1=signature
     const payloadToSign = timestampHeader + "." + payload
     const expectedSignature = createHmac("sha256", PAYMONGO_WEBHOOK_SECRET)
       .update(payloadToSign)
       .digest("hex")
 
-    // Parse signature header
     const signatures = signatureHeader.split(",").reduce(
       (acc, pair) => {
         const [key, value] = pair.split("=")
@@ -40,6 +37,75 @@ function verifyWebhookSignature(
   }
 }
 
+// Helper to handle successful payment for merchandise order
+async function handleMerchPaymentSuccess(orderId: string) {
+  const merchOrder = await db.merchOrder.findUnique({ where: { id: orderId } })
+  if (!merchOrder || merchOrder.paymentStatus === "paid") return
+
+  await db.merchOrder.update({
+    where: { id: orderId },
+    data: { paymentStatus: "paid", paidAt: new Date() },
+  })
+
+  const orderItems = await db.merchOrderItem.findMany({ where: { orderId } })
+  for (const item of orderItems) {
+    await db.merchItem.update({
+      where: { id: item.itemId },
+      data: { soldCount: { increment: item.quantity } },
+    })
+  }
+
+  console.log(`Payment confirmed for merch order ${merchOrder.orderNumber}`)
+}
+
+// Helper to handle failed payment for merchandise order
+async function handleMerchPaymentFailed(orderId: string) {
+  const merchOrder = await db.merchOrder.findUnique({ where: { id: orderId } })
+  if (!merchOrder || merchOrder.paymentStatus === "paid") return
+
+  const orderItems = await db.merchOrderItem.findMany({ where: { orderId } })
+
+  await db.merchOrder.update({
+    where: { id: orderId },
+    data: { paymentStatus: "failed" },
+  })
+
+  for (const item of orderItems) {
+    await db.merchItem.update({
+      where: { id: item.itemId },
+      data: { stock: { increment: item.quantity } },
+    })
+  }
+
+  console.log(`Payment failed for merch order ${merchOrder.orderNumber} — stock restored`)
+}
+
+// Helper to handle successful payment for registration
+async function handleRegistrationPaymentSuccess(registrationId: string) {
+  const registration = await db.registration.findUnique({ where: { id: registrationId } })
+  if (!registration || registration.paymentStatus === "paid") return
+
+  await db.registration.update({
+    where: { id: registrationId },
+    data: { paymentStatus: "paid", paidAt: new Date() },
+  })
+
+  console.log(`Payment confirmed for registration ${registrationId}`)
+}
+
+// Helper to handle failed payment for registration
+async function handleRegistrationPaymentFailed(registrationId: string) {
+  const registration = await db.registration.findUnique({ where: { id: registrationId } })
+  if (!registration || registration.paymentStatus === "paid") return
+
+  await db.registration.update({
+    where: { id: registrationId },
+    data: { paymentStatus: "failed" },
+  })
+
+  console.log(`Payment failed for registration ${registrationId}`)
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -52,138 +118,133 @@ export async function POST(req: NextRequest) {
     if (signatureHeader && timestampHeader && PAYMONGO_WEBHOOK_SECRET !== "whsk_your_secret_here") {
       if (!verifyWebhookSignature(rawBody, signatureHeader, timestampHeader)) {
         console.error("Webhook signature verification failed")
-        return NextResponse.json(
-          { error: "Invalid signature" },
-          { status: 401 }
-        )
+        return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
       }
     }
 
-    // PayMongo webhook payload structure:
-    // { data: { id, type, attributes: { type: "source.chargeable"|"source.failed", data: { id: sourceId, ... } } } }
+    // PayMongo webhook event types we handle:
+    // Source events (e-wallet): source.chargeable
+    // Payment events: payment.paid, payment.failed
     const eventType = body?.data?.attributes?.type
-    const sourceData = body?.data?.attributes?.data
-    const sourceId = sourceData?.id
-    const metadata = sourceData?.metadata || {}
+    const eventData = body?.data?.attributes?.data
 
-    if (!eventType || !sourceId) {
-      return NextResponse.json(
-        { error: "Invalid webhook payload" },
-        { status: 400 }
-      )
+    if (!eventType) {
+      return NextResponse.json({ error: "Invalid webhook payload" }, { status: 400 })
     }
 
-    // Determine order type from metadata
-    const orderType = metadata.orderType || "registration" // default to registration for backward compat
+    // ============ SOURCE EVENTS (e-wallet: GCash, Maya, GrabPay) ============
+    if (eventType === "source.chargeable") {
+      const sourceId = eventData?.id
+      const metadata = eventData?.metadata || {}
 
-    if (orderType === "merchandise") {
-      // Handle merchandise order payment
-      const orderId = metadata.orderId
-
-      if (!orderId) {
-        console.warn(`Webhook: No orderId in metadata for merch source ${sourceId}`)
-        return NextResponse.json({ received: true })
+      if (!sourceId) {
+        return NextResponse.json({ error: "Missing source ID" }, { status: 400 })
       }
 
-      const merchOrder = await db.merchOrder.findUnique({
-        where: { id: orderId },
-      })
+      const orderType = metadata.orderType || "registration"
 
-      if (!merchOrder) {
-        console.warn(`Webhook: No merch order found for ID ${orderId}`)
-        return NextResponse.json({ received: true })
-      }
-
-      if (merchOrder.paymentStatus === "paid") {
-        // Already processed, skip
-        return NextResponse.json({ received: true })
-      }
-
-      if (eventType === "source.chargeable") {
-        // Payment succeeded
-        await db.merchOrder.update({
-          where: { id: merchOrder.id },
-          data: {
-            paymentStatus: "paid",
-            paidAt: new Date(),
-          },
-        })
-
-        // Update sold count for each item
-        const orderItems = await db.merchOrderItem.findMany({
-          where: { orderId: merchOrder.id },
-        })
-        for (const item of orderItems) {
-          await db.merchItem.update({
-            where: { id: item.itemId },
-            data: { soldCount: { increment: item.quantity } },
-          })
+      if (orderType === "merchandise") {
+        const orderId = metadata.orderId
+        if (orderId) {
+          await handleMerchPaymentSuccess(orderId)
         }
-
-        console.log(`Payment confirmed for merch order ${merchOrder.orderNumber}`)
-      } else if (eventType === "source.failed") {
-        // Payment failed — restore stock
-        const orderItems = await db.merchOrderItem.findMany({
-          where: { orderId: merchOrder.id },
+      } else {
+        // Registration — find by payment reference (source ID)
+        const registration = await db.registration.findFirst({
+          where: { paymentReference: sourceId },
         })
-
-        await db.merchOrder.update({
-          where: { id: merchOrder.id },
-          data: { paymentStatus: "failed" },
-        })
-
-        // Restore stock
-        for (const item of orderItems) {
-          await db.merchItem.update({
-            where: { id: item.itemId },
-            data: { stock: { increment: item.quantity } },
-          })
+        if (registration) {
+          await handleRegistrationPaymentSuccess(registration.id)
+        } else {
+          console.warn(`Webhook: No registration found for source ID ${sourceId}`)
         }
-
-        console.log(`Payment failed for merch order ${merchOrder.orderNumber} — stock restored`)
-      }
-    } else {
-      // Handle event registration payment (original behavior)
-      const registration = await db.registration.findFirst({
-        where: { paymentReference: sourceId },
-      })
-
-      if (!registration) {
-        console.warn(`Webhook: No registration found for source ID ${sourceId}`)
-        return NextResponse.json({ received: true })
       }
 
-      if (registration.paymentStatus === "paid") {
-        // Already processed
-        return NextResponse.json({ received: true })
-      }
-
-      if (eventType === "source.chargeable") {
-        await db.registration.update({
-          where: { id: registration.id },
-          data: {
-            paymentStatus: "paid",
-            paidAt: new Date(),
-          },
-        })
-        console.log(`Payment confirmed for registration ${registration.id}`)
-      } else if (eventType === "source.failed") {
-        await db.registration.update({
-          where: { id: registration.id },
-          data: {
-            paymentStatus: "failed",
-          },
-        })
-        console.log(`Payment failed for registration ${registration.id}`)
-      }
+      return NextResponse.json({ received: true })
     }
 
+    // ============ PAYMENT EVENTS (newer PayMongo API) ============
+    if (eventType === "payment.paid") {
+      const paymentId = eventData?.id
+      const sourceId = eventData?.attributes?.source?.id
+
+      if (!paymentId && !sourceId) {
+        return NextResponse.json({ error: "Missing payment/source ID" }, { status: 400 })
+      }
+
+      // Try to find by source ID in metadata or in registrations
+      // First check payment metadata
+      const paymentMetadata = eventData?.attributes?.metadata || {}
+      const orderType = paymentMetadata.orderType
+
+      if (orderType === "merchandise" && paymentMetadata.orderId) {
+        await handleMerchPaymentSuccess(paymentMetadata.orderId)
+      } else if (orderType === "registration" && paymentMetadata.registrationId) {
+        await handleRegistrationPaymentSuccess(paymentMetadata.registrationId)
+      } else if (sourceId) {
+        // Fallback: find registration by source reference
+        const registration = await db.registration.findFirst({
+          where: { paymentReference: sourceId },
+        })
+        if (registration) {
+          await handleRegistrationPaymentSuccess(registration.id)
+        } else {
+          // Try merch order by payment reference
+          const merchOrder = await db.merchOrder.findFirst({
+            where: { paymentReference: sourceId },
+          })
+          if (merchOrder) {
+            await handleMerchPaymentSuccess(merchOrder.id)
+          } else {
+            console.warn(`Webhook: No order found for source ID ${sourceId}`)
+          }
+        }
+      }
+
+      return NextResponse.json({ received: true })
+    }
+
+    if (eventType === "payment.failed") {
+      const paymentId = eventData?.id
+      const sourceId = eventData?.attributes?.source?.id
+
+      if (!paymentId && !sourceId) {
+        return NextResponse.json({ error: "Missing payment/source ID" }, { status: 400 })
+      }
+
+      const paymentMetadata = eventData?.attributes?.metadata || {}
+      const orderType = paymentMetadata.orderType
+
+      if (orderType === "merchandise" && paymentMetadata.orderId) {
+        await handleMerchPaymentFailed(paymentMetadata.orderId)
+      } else if (orderType === "registration" && paymentMetadata.registrationId) {
+        await handleRegistrationPaymentFailed(paymentMetadata.registrationId)
+      } else if (sourceId) {
+        const registration = await db.registration.findFirst({
+          where: { paymentReference: sourceId },
+        })
+        if (registration) {
+          await handleRegistrationPaymentFailed(registration.id)
+        } else {
+          const merchOrder = await db.merchOrder.findFirst({
+            where: { paymentReference: sourceId },
+          })
+          if (merchOrder) {
+            await handleMerchPaymentFailed(merchOrder.id)
+          } else {
+            console.warn(`Webhook: No order found for source ID ${sourceId}`)
+          }
+        }
+      }
+
+      return NextResponse.json({ received: true })
+    }
+
+    // Unhandled event type — acknowledge but ignore
+    console.log(`Webhook: Unhandled event type "${eventType}" — ignored`)
     return NextResponse.json({ received: true })
   } catch (error) {
     console.error("Webhook processing error:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
