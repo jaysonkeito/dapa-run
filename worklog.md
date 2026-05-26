@@ -96,3 +96,27 @@ Stage Summary:
 - The published URL (dapa-run-dumaguete.space-z.ai) goes through the FC gateway which hasn't deployed the function yet
 - This CANNOT be fixed from inside the container - the user needs to go to Space-Z.ai dashboard and click Publish/Deploy, or contact support
 - Added health check API endpoint, fixed NextAuth config, updated Dumaguete text styling
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix three issues - Dumaguete suffix size, developer login redirect, stale data on landing pages
+
+Work Log:
+- Changed 'Dumaguete' suffix size from text-[10px]/text-xs to text-[15px] in Header (desktop + mobile), admin dashboard sidebar (desktop + mobile)
+- Fixed developer login redirect: Added developer role handling in admin login page, UserAuthModal, and Header
+- Added 'Dev Panel' button in header for logged-in developers (teal-colored)
+- Added developer redirect in admin login page (if developer logs in via admin page, redirect to dev-dashboard)
+- Added developer redirect in UserAuthModal (if developer logs in via landing page modal, redirect to dev-dashboard)
+- Removed all fallback/hardcoded data from landing page components
+- Updated UpcomingEventsPage, PreviousEventsPage, RaceResultsPage to use empty initial state instead of fallback data
+- Updated MerchandisePage and InventoryPage similarly
+- Updated HomePage to use empty initial state and handle no events gracefully
+- Updated Footer to fetch next event from API instead of using hardcoded data
+- Removed `if (data.length > 0)` guards so that empty API responses properly clear the state
+- Built successfully, pushed to GitHub
+
+Stage Summary:
+- Dumaguete suffix now displays at text-[15px] across all locations
+- Developer login now properly redirects to /admin/dev-dashboard
+- Landing pages no longer show stale/fake data when database is empty
+- All API endpoints return [] for empty database, and pages show appropriate empty states
