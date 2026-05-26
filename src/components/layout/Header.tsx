@@ -99,7 +99,7 @@ export default function Header() {
                   <span className="text-lg sm:text-2xl font-black tracking-tight text-gray-900 group-hover:text-orange-600 transition-colors">
                     DAPA RUN
                   </span>
-                  <span className="text-xs sm:text-[20px] font-light tracking-[0.15em] text-gray-400 -mt-1" style={{ letterSpacing: '0.15em' }}>
+                  <span className="text-[15px] sm:text-[20px] font-light tracking-[0.15em] text-gray-400 -mt-1" style={{ letterSpacing: '0.15em' }}>
                     {siteSettings.siteNameSuffix}
                   </span>
                 </div>
@@ -199,7 +199,7 @@ export default function Header() {
                           </div>
                           <div>
                             <h2 className="text-white font-bold text-lg">DAPA RUN</h2>
-                            <p className="text-white/70 text-xs sm:text-[20px] font-light tracking-[0.15em]">{siteSettings.siteNameSuffix}</p>
+                            <p className="text-white/70 text-[15px] sm:text-[20px] font-light tracking-[0.15em]">{siteSettings.siteNameSuffix}</p>
                           </div>
                         </div>
                       </div>
