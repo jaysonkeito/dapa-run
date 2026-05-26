@@ -92,8 +92,8 @@ export default function DevDashboardLayout({
           </div>
           {!collapsed && (
             <div className="flex flex-col min-w-0">
-              <h1 className="text-white font-bold text-lg">DAPA RUN</h1>
-              <span className="text-teal-400 text-xl font-light tracking-[0.15em] -mt-0.5 truncate">Developer</span>
+              <h1 className="text-white font-black text-xl">DAPA RUN</h1>
+              <span className="text-teal-400 text-[13px] font-light tracking-[0.15em] -mt-0.5 truncate">Developer</span>
             </div>
           )}
         </div>
@@ -173,8 +173,8 @@ export default function DevDashboardLayout({
                   <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-full h-full object-cover" />
                 </div>
                 <div className="flex flex-col">
-                  <h1 className="text-white font-bold text-lg">DAPA RUN</h1>
-                  <span className="text-teal-400 text-xl font-light tracking-[0.15em] -mt-0.5">Developer</span>
+                  <h1 className="text-white font-black text-xl">DAPA RUN</h1>
+                  <span className="text-teal-400 text-[13px] font-light tracking-[0.15em] -mt-0.5">Developer</span>
                 </div>
               </div>
               <button onClick={() => setSidebarOpen(false)} className="text-gray-400 hover:text-white">
