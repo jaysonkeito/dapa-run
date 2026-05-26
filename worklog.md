@@ -120,3 +120,38 @@ Stage Summary:
 - Developer login now properly redirects to /admin/dev-dashboard
 - Landing pages no longer show stale/fake data when database is empty
 - All API endpoints return [] for empty database, and pages show appropriate empty states
+
+---
+Task ID: 2
+Agent: Main
+Task: Add PayMongo e-wallet payment integration (GCash, Maya, GrabPay)
+
+Work Log:
+- Updated .env with PayMongo test API keys
+- Added MerchOrder and MerchOrderItem Prisma models with payment tracking
+- Added MerchOrder relation to User model
+- Ran Prisma migration (db push) successfully
+- Created /api/merch-checkout route for merchandise cart checkout with PayMongo
+- Updated /api/payment/webhook to handle both registration and merchandise payments
+- Added webhook signature verification using HMAC-SHA256
+- Updated /api/payment/status to support both registration and merch order types
+- Added orderType metadata to PayMongo source creation for registrations
+- Rebuilt CartPage.tsx with full 2-step checkout flow (Cart → Payment)
+- Added GCash/Maya/GrabPay payment method selection UI with visual cards
+- Added test mode badge in checkout flow
+- Updated payment success page to handle both registration and merch order types
+- Updated payment failed page to handle both order types
+- Created admin Online Orders page (/admin/dashboard/online-orders) with search, filter, pagination, order detail dialog
+- Added 'Online Orders' menu item to admin sidebar with Package icon
+- Created /api/admin/merch-orders route for admin order listing
+- Removed .env from git tracking to prevent push protection blocks
+- Built successfully, pushed to GitHub, restarted PM2
+
+Stage Summary:
+- Full PayMongo e-wallet payment integration complete for both event registrations and merchandise orders
+- GCash, Maya, GrabPay supported in test mode
+- CartPage now has proper 2-step checkout (cart review → payment method selection → PayMongo redirect)
+- Admin can view all online merchandise orders in dedicated dashboard page
+- Webhook handles both order types with stock management (decrement on order, restore on failure)
+- Webhook signature verification added (skipped in test mode without webhook secret)
+- Site live at https://dapa-run.space-z.ai

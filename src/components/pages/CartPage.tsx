@@ -453,10 +453,10 @@ export default function CartPage() {
                         <span className="text-xs">Payments are processed securely via PayMongo</span>
                       </div>
 
-                      {/* Test Mode Badge */}
-                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-                        <p className="text-xs text-amber-700">
-                          <span className="font-semibold">Test Mode:</span> You are in PayMongo test environment. No real charges will be made. Use test e-wallet credentials to complete payment.
+                      {/* Live Payment Notice */}
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                        <p className="text-xs text-blue-700">
+                          <span className="font-semibold">Secure Payment:</span> You will be charged the exact amount shown. Please ensure your e-wallet has sufficient balance before proceeding.
                         </p>
                       </div>
 
