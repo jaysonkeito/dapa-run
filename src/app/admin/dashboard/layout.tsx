@@ -115,9 +115,13 @@ export default function AdminDashboardLayout({
             <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-full h-full object-cover" />
           </div>
           {!collapsed && (
-            <div className="flex flex-col min-w-0">
-              <h1 className="text-white font-black text-xl">DAPA RUN</h1>
-              <span className="text-gray-400 text-[13px] font-light tracking-[0.15em] -mt-0.5 truncate">{siteSettings.siteNameSuffix}</span>
+            <div className="flex flex-col">
+              <span className="text-lg sm:text-2xl font-black tracking-tight text-white">
+                DAPA RUN
+              </span>
+              <span className="text-[20px] font-light tracking-[0.15em] text-gray-400 -mt-1" style={{ letterSpacing: '0.15em' }}>
+                {siteSettings.siteNameSuffix}
+              </span>
             </div>
           )}
         </div>
@@ -197,8 +201,12 @@ export default function AdminDashboardLayout({
                   <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-full h-full object-cover" />
                 </div>
                 <div className="flex flex-col">
-                  <h1 className="text-white font-black text-xl">DAPA RUN</h1>
-                  <span className="text-gray-400 text-[13px] font-light tracking-[0.15em] -mt-0.5">{siteSettings.siteNameSuffix}</span>
+                  <span className="text-lg sm:text-2xl font-black tracking-tight text-white">
+                    DAPA RUN
+                  </span>
+                  <span className="text-[20px] font-light tracking-[0.15em] text-gray-400 -mt-1" style={{ letterSpacing: '0.15em' }}>
+                    {siteSettings.siteNameSuffix}
+                  </span>
                 </div>
               </div>
               <button onClick={() => setSidebarOpen(false)} className="text-gray-400 hover:text-white">
