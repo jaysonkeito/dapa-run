@@ -9,6 +9,8 @@ import { motion } from 'framer-motion'
 function PaymentFailedContent() {
   const searchParams = useSearchParams()
   const ref = searchParams.get('ref')
+  const type = searchParams.get('type') || 'registration'
+  const isMerch = type === 'merch'
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-50 p-4">
@@ -29,7 +31,9 @@ function PaymentFailedContent() {
           Payment Failed
         </h1>
         <p className="text-gray-500 mb-2">
-          Your payment could not be processed. Please try again or choose a different payment method.
+          {isMerch
+            ? 'Your order payment could not be processed. Your cart items have been preserved and stock restored.'
+            : 'Your payment could not be processed. Please try again or choose a different payment method.'}
         </p>
 
         {ref && (

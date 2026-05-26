@@ -22,6 +22,7 @@ import {
   FileText,
   ChevronsLeft,
   ChevronsRight,
+  Package,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -33,6 +34,7 @@ const allSidebarItems = [
   { label: 'Inventory', href: '/admin/dashboard/merchandise', icon: ShoppingBag, roles: ['admin'] },
   { label: 'Race Results', href: '/admin/dashboard/results', icon: Trophy, roles: ['admin', 'staff'] },
   { label: 'Registrations', href: '/admin/dashboard/registrations', icon: ClipboardList, roles: ['admin', 'staff'] },
+  { label: 'Online Orders', href: '/admin/dashboard/online-orders', icon: Package, roles: ['admin', 'staff'] },
   { label: 'On-site Registration', href: '/admin/dashboard/onsite-registration', icon: UserPlus, roles: ['admin', 'staff'] },
   { label: 'Sales Counter', href: '/admin/dashboard/pos', icon: Monitor, roles: ['admin', 'staff'] },
   { label: 'Sales Analytics', href: '/admin/dashboard/pos-analytics', icon: PieChart, roles: ['admin'] },

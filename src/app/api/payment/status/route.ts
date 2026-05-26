@@ -5,6 +5,7 @@ export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams
     const ref = searchParams.get("ref")
+    const type = searchParams.get("type") || "registration" // "registration" or "merch"
 
     if (!ref) {
       return NextResponse.json(
@@ -13,24 +14,54 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    const registration = await db.registration.findUnique({
-      where: { id: ref },
-      select: {
-        id: true,
-        paymentStatus: true,
-        paymentMethod: true,
-        totalAmount: true,
-      },
-    })
+    if (type === "merch") {
+      // Check merchandise order payment status
+      const merchOrder = await db.merchOrder.findUnique({
+        where: { id: ref },
+        select: {
+          id: true,
+          orderNumber: true,
+          paymentStatus: true,
+          paymentMethod: true,
+          totalAmount: true,
+        },
+      })
 
-    if (!registration) {
-      return NextResponse.json(
-        { error: "Registration not found" },
-        { status: 404 }
-      )
+      if (!merchOrder) {
+        return NextResponse.json(
+          { error: "Order not found" },
+          { status: 404 }
+        )
+      }
+
+      return NextResponse.json({
+        ...merchOrder,
+        type: "merch",
+      })
+    } else {
+      // Check registration payment status (original behavior)
+      const registration = await db.registration.findUnique({
+        where: { id: ref },
+        select: {
+          id: true,
+          paymentStatus: true,
+          paymentMethod: true,
+          totalAmount: true,
+        },
+      })
+
+      if (!registration) {
+        return NextResponse.json(
+          { error: "Registration not found" },
+          { status: 404 }
+        )
+      }
+
+      return NextResponse.json({
+        ...registration,
+        type: "registration",
+      })
     }
-
-    return NextResponse.json(registration)
   } catch (error) {
     console.error("Payment status check error:", error)
     return NextResponse.json(

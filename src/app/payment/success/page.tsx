@@ -3,14 +3,20 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { CheckCircle, ArrowRight, Loader2 } from 'lucide-react'
+import { CheckCircle, ArrowRight, Loader2, ShoppingBag, Trophy } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams()
   const ref = searchParams.get('ref')
+  const type = searchParams.get('type') || 'registration'
   const [checking, setChecking] = useState(true)
   const [paymentConfirmed, setPaymentConfirmed] = useState(false)
+  const [orderInfo, setOrderInfo] = useState<{
+    orderNumber?: string
+    totalAmount?: number
+    paymentMethod?: string
+  }>({})
 
   useEffect(() => {
     async function checkPayment() {
@@ -19,11 +25,18 @@ function PaymentSuccessContent() {
         return
       }
       try {
-        const res = await fetch(`/api/payment/status?ref=${ref}`)
+        const res = await fetch(`/api/payment/status?ref=${ref}&type=${type}`)
         if (res.ok) {
           const data = await res.json()
           if (data.paymentStatus === 'paid') {
             setPaymentConfirmed(true)
+          }
+          if (type === 'merch') {
+            setOrderInfo({
+              orderNumber: data.orderNumber,
+              totalAmount: data.totalAmount,
+              paymentMethod: data.paymentMethod,
+            })
           }
         }
       } catch {
@@ -33,10 +46,12 @@ function PaymentSuccessContent() {
       }
     }
     checkPayment()
-  }, [ref])
+  }, [ref, type])
+
+  const isMerch = type === 'merch'
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-50 p-4">
+    <div className={`min-h-screen flex items-center justify-center p-4 ${isMerch ? 'bg-gradient-to-br from-blue-50 to-indigo-50' : 'bg-gradient-to-br from-green-50 to-emerald-50'}`}>
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -60,9 +75,31 @@ function PaymentSuccessContent() {
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
               Payment Successful!
             </h1>
-            <p className="text-gray-500 mb-2">
-              Your registration has been confirmed.
-            </p>
+
+            {isMerch ? (
+              <>
+                <p className="text-gray-500 mb-2">
+                  Your order has been confirmed.
+                </p>
+                {orderInfo.orderNumber && (
+                  <p className="text-sm font-medium text-gray-700 mb-1">
+                    Order: {orderInfo.orderNumber}
+                  </p>
+                )}
+                {orderInfo.totalAmount && (
+                  <p className="text-sm font-semibold text-orange-600 mb-2">
+                    Total: ₱{orderInfo.totalAmount.toLocaleString()}
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="text-gray-500 mb-2">
+                  Your registration has been confirmed.
+                </p>
+              </>
+            )}
+
             {paymentConfirmed && (
               <p className="text-sm text-green-600 font-medium mb-4">
                 Payment verified and confirmed
@@ -80,13 +117,25 @@ function PaymentSuccessContent() {
               </p>
             )}
 
-            <Button
-              onClick={() => window.location.href = '/'}
-              className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold shadow-lg"
-            >
-              Return to Home
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
+            <div className="space-y-3">
+              <Button
+                onClick={() => window.location.href = '/'}
+                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold shadow-lg"
+              >
+                Return to Home
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+              {isMerch && (
+                <Button
+                  onClick={() => window.location.href = '/'}
+                  variant="outline"
+                  className="w-full font-semibold"
+                >
+                  <ShoppingBag className="w-4 h-4 mr-2" />
+                  Continue Shopping
+                </Button>
+              )}
+            </div>
           </>
         )}
       </motion.div>

@@ -131,6 +131,7 @@ export async function POST(req: NextRequest) {
             email: userEmail || "",
           },
           metadata: {
+            orderType: "registration",
             registrationId: registration.id,
             eventId,
             distance,
