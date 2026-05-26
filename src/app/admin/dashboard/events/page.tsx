@@ -99,8 +99,8 @@ const emptyEvent = {
 
 const standardInclusions = ['Race Bib', 'Finishers Medal', 'Post-Race Meal', 'Other']
 
-const standardShirtSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL']
-const standardSingletSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL']
+const standardShirtSizes = ['2XS', 'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL', '6XL']
+const standardSingletSizes = ['2XS', 'XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL', '6XL']
 const standardDistances = ['1K', '3K', '5K', '10K', '21K', '42K', '50K', '100K']
 
 // Sort distances from shortest to longest
@@ -136,6 +136,8 @@ export default function AdminEventsPage() {
   const [otherDistance, setOtherDistance] = useState('')
   const [otherInclusions, setOtherInclusions] = useState<Record<string, string[]>>({}) // { "3K": ["Event Shirt", "Grab Bag"], ... }
   const [openInclusionDropdown, setOpenInclusionDropdown] = useState<string | null>(null) // which distance's dropdown is open
+  const [locationSuggestions, setLocationSuggestions] = useState<{ display_name: string }[]>([])
+  const [locationSearchTimeout, setLocationSearchTimeout] = useState<NodeJS.Timeout | null>(null)
 
   // Helper to get distance prices from form
   const getDistancePrices = () => {
@@ -205,6 +207,7 @@ export default function AdminEventsPage() {
     setOtherDistance('')
     setOtherInclusions({})
     setOpenInclusionDropdown(null)
+    setLocationSuggestions([])
     setDialogOpen(true)
   }
 
@@ -250,6 +253,7 @@ export default function AdminEventsPage() {
     }
     setOtherInclusions(parsedOtherInclusions)
     setOpenInclusionDropdown(null)
+    setLocationSuggestions([])
 
     setForm({
       title: event.title,
@@ -603,6 +607,32 @@ export default function AdminEventsPage() {
     }
   }
 
+  // Fetch location suggestions from Nominatim (OpenStreetMap) API
+  const fetchLocationSuggestions = (query: string) => {
+    if (locationSearchTimeout) {
+      clearTimeout(locationSearchTimeout)
+    }
+    if (query.length < 2) {
+      setLocationSuggestions([])
+      return
+    }
+    const timeout = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=ph`,
+          { headers: { 'Accept-Language': 'en' } }
+        )
+        const data = await res.json()
+        if (Array.isArray(data)) {
+          setLocationSuggestions(data.map((item: { display_name: string }) => ({ display_name: item.display_name })))
+        }
+      } catch {
+        // Silently fail - autocomplete is optional
+      }
+    }, 300)
+    setLocationSearchTimeout(timeout)
+  }
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -726,14 +756,48 @@ export default function AdminEventsPage() {
           <DialogTitle>{selectedEvent ? 'Edit Event' : 'Add Event'}</DialogTitle>
           <div className="space-y-4 mt-4">
             {/* Section 1: Title & Location */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Title</Label>
-                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Enter event title" />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 relative">
                 <Label>Location</Label>
-                <Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+                <Input
+                  value={form.location}
+                  onChange={(e) => {
+                    setForm({ ...form, location: e.target.value })
+                    fetchLocationSuggestions(e.target.value)
+                  }}
+                  onFocus={() => {
+                    if (form.location.length >= 2) fetchLocationSuggestions(form.location)
+                  }}
+                  onBlur={() => {
+                    // Delay to allow clicking on suggestion
+                    setTimeout(() => setLocationSuggestions([]), 200)
+                  }}
+                  placeholder="Enter event location (e.g., Rizal Boulevard, Dumaguete City)"
+                  className="w-full"
+                />
+                {locationSuggestions.length > 0 && (
+                  <div className="absolute z-30 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {locationSuggestions.map((suggestion, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          setForm({ ...form, location: suggestion.display_name })
+                          setLocationSuggestions([])
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-orange-50 hover:text-orange-700 transition-colors border-b border-gray-50 last:border-0"
+                      >
+                        <span className="font-medium text-gray-900">{suggestion.display_name.split(',')[0]}</span>
+                        <span className="text-gray-500 text-xs block truncate">{suggestion.display_name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -960,7 +1024,7 @@ export default function AdminEventsPage() {
                                       </button>
                                       {/* "Other" custom inputs - show when Other is checked */}
                                       {isOther && isSelected && (
-                                        <div className="mt-1 ml-6 space-y-1" onClick={(e) => e.stopPropagation()}>
+                                        <div className="mt-1 ml-6 space-y-1.5" onClick={(e) => e.stopPropagation()}>
                                           {customItems.map((customText, cIdx) => (
                                             <div key={cIdx} className="flex items-center gap-1">
                                               <Input
@@ -968,7 +1032,7 @@ export default function AdminEventsPage() {
                                                 onChange={(e) => setOtherInclusionText(dist, cIdx, e.target.value)}
                                                 onBlur={() => handleOtherInclusionBlur(dist, cIdx)}
                                                 placeholder="Enter custom inclusion"
-                                                className="h-7 text-xs max-w-[200px]"
+                                                className="h-7 text-xs flex-1"
                                               />
                                               <button
                                                 type="button"
@@ -982,9 +1046,9 @@ export default function AdminEventsPage() {
                                           <button
                                             type="button"
                                             onClick={() => addOtherInclusionItem(dist)}
-                                            className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded transition-colors"
+                                            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-md transition-colors border border-dashed border-orange-300 w-full justify-center"
                                           >
-                                            <Plus className="w-3 h-3" />
+                                            <Plus className="w-3.5 h-3.5" />
                                             Add Custom Inclusion
                                           </button>
                                         </div>
