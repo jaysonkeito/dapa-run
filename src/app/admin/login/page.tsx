@@ -22,10 +22,14 @@ function AdminLoginForm() {
     const errorParam = searchParams.get('error')
     if (errorParam === 'Configuration') {
       setError('Session expired. Please try again.')
+      // Clean the URL to avoid showing the error on refresh
+      window.history.replaceState({}, '', '/admin/login')
     } else if (errorParam === 'SessionRequired') {
       setError('Please sign in to access the admin panel.')
+      window.history.replaceState({}, '', '/admin/login')
     } else if (errorParam) {
       setError('Authentication error. Please try again.')
+      window.history.replaceState({}, '', '/admin/login')
     }
   }, [searchParams])
 
@@ -35,8 +39,6 @@ function AdminLoginForm() {
     setLoading(true)
 
     try {
-      // Use signIn with callbackUrl for reliable redirect after login
-      // This avoids the session check race condition with redirect: false
       const result = await signIn('credentials', {
         email,
         password,
@@ -49,19 +51,17 @@ function AdminLoginForm() {
         return
       }
 
-      // Login succeeded - wait a moment for session to be available
-      // then check role and redirect
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // Login succeeded - wait for session to be available
+      await new Promise(resolve => setTimeout(resolve, 800))
 
       const res = await fetch('/api/auth/session')
       const session = await res.json()
 
       if (session?.user?.role === 'admin' || session?.user?.role === 'staff') {
-        // Use window.location for a full page navigation to ensure
-        // middleware picks up the new session cookie
-        window.location.href = '/admin/dashboard'
+        // Clear any error params from URL and redirect to dashboard
+        window.location.replace('/admin/dashboard')
       } else if (session?.user?.role === 'developer') {
-        window.location.href = '/admin/dev-dashboard'
+        window.location.replace('/admin/dev-dashboard')
       } else {
         setError('Access denied. Admin or staff credentials required.')
         setLoading(false)

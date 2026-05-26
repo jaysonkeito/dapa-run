@@ -22,10 +22,13 @@ function DevLoginForm() {
     const errorParam = searchParams.get('error')
     if (errorParam === 'Configuration') {
       setError('Session expired. Please try again.')
+      window.history.replaceState({}, '', '/admin/dev-login')
     } else if (errorParam === 'SessionRequired') {
       setError('Please sign in to access the developer portal.')
+      window.history.replaceState({}, '', '/admin/dev-login')
     } else if (errorParam) {
       setError('Authentication error. Please try again.')
+      window.history.replaceState({}, '', '/admin/dev-login')
     }
   }, [searchParams])
 
@@ -47,14 +50,16 @@ function DevLoginForm() {
         return
       }
 
-      // Login succeeded - wait a moment for session to be available
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // Login succeeded - wait for session to be available
+      await new Promise(resolve => setTimeout(resolve, 800))
 
       const res = await fetch('/api/auth/session')
       const session = await res.json()
 
       if (session?.user?.role === 'developer') {
-        window.location.href = '/admin/dev-dashboard'
+        window.location.replace('/admin/dev-dashboard')
+      } else if (session?.user?.role === 'admin' || session?.user?.role === 'staff') {
+        window.location.replace('/admin/dashboard')
       } else {
         setError('Access denied. Developer credentials required.')
         setLoading(false)

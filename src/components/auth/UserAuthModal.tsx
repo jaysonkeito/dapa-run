@@ -64,6 +64,7 @@ export default function UserAuthModal() {
         })
       } else {
         // Check the user's role after login
+        await new Promise(resolve => setTimeout(resolve, 500))
         const sessionRes = await fetch('/api/auth/session')
         const sessionData = await sessionRes.json()
         const userRole = sessionData?.user?.role
@@ -76,13 +77,13 @@ export default function UserAuthModal() {
             title: userRole === 'admin' ? 'Welcome, Admin!' : 'Welcome, Staff!',
             description: 'Redirecting to the Dashboard...',
           })
-          window.location.href = '/admin/dashboard'
+          window.location.replace('/admin/dashboard')
         } else if (userRole === 'developer') {
           toast({
             title: 'Welcome, Developer!',
             description: 'Redirecting to the Developer Dashboard...',
           })
-          window.location.href = '/admin/dev-dashboard'
+          window.location.replace('/admin/dev-dashboard')
         } else {
           // Check if there's a pending cart item (user tried to add to cart before logging in)
           if (pendingCartItem) {

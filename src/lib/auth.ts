@@ -3,9 +3,6 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { db } from "@/lib/db"
 
-// Detect if we're behind HTTPS proxy
-const isHttps = (process.env.NEXTAUTH_URL || "").startsWith("https")
-
 export const authOptions: NextAuthOptions = {
   trustHost: true,
   providers: [
@@ -31,35 +28,6 @@ export const authOptions: NextAuthOptions = {
   },
   jwt: {
     maxAge: 15 * 60, // 15 minutes
-  },
-  cookies: {
-    sessionToken: {
-      name: `${isHttps ? "__Secure-" : ""}next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: isHttps,
-        maxAge: 15 * 60,
-      },
-    },
-    callbackUrl: {
-      name: `${isHttps ? "__Secure-" : ""}next-auth.callback-url`,
-      options: {
-        sameSite: "lax",
-        path: "/",
-        secure: isHttps,
-      },
-    },
-    csrfToken: {
-      name: `${isHttps ? "__Host-" : ""}next-auth.csrf-token`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: isHttps,
-      },
-    },
   },
   callbacks: {
     async jwt({ token, user }) {
