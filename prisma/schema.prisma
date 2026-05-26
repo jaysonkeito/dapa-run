@@ -82,6 +82,10 @@ model Registration {
   finisherShirtSize String?
   singletSize       String?
   totalAmount      Int    @default(0)
+  paymentStatus   String  @default("pending")  // "pending", "paid", "failed", "refunded"
+  paymentMethod   String?   // "gcash", "maya", "grabpay", "cash"
+  paymentReference String?  // PayMongo source ID or reference
+  paidAt          DateTime?
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)

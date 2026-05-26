@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
     const userId = (session.user as Record<string, unknown>).id as string
     const body = await req.json()
-    const { eventId, distance, finisherShirtSize, singletSize, totalAmount } = body
+    const { eventId, distance, finisherShirtSize, singletSize, totalAmount, paymentMethod } = body
 
     if (!eventId || !distance) {
       return NextResponse.json(
@@ -62,6 +62,12 @@ export async function POST(req: NextRequest) {
       ? computedTotal
       : computedTotal
 
+    // Determine payment status based on method
+    // Cash payments remain "pending" until verified by admin
+    // E-wallet payments go through /api/payment/create instead
+    const resolvedPaymentMethod = paymentMethod || "cash"
+    const paymentStatus = "pending"
+
     const registration = await db.registration.create({
       data: {
         userId,
@@ -70,6 +76,8 @@ export async function POST(req: NextRequest) {
         finisherShirtSize: finisherShirtSize || null,
         singletSize: singletSize || null,
         totalAmount: validatedTotalAmount,
+        paymentMethod: resolvedPaymentMethod,
+        paymentStatus,
       },
     })
 

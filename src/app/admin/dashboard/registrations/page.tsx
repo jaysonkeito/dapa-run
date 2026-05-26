@@ -37,6 +37,7 @@ interface CombinedRegistration {
   singletSize: string | null
   totalAmount: number
   paymentMethod?: string
+  paymentStatus?: string
   staffName?: string | null
   createdAt: string
 }
@@ -79,6 +80,8 @@ export default function AdminRegistrationsPage() {
         finisherShirtSize: reg.finisherShirtSize as string | null,
         singletSize: reg.singletSize as string | null,
         totalAmount: reg.totalAmount as number,
+        paymentMethod: reg.paymentMethod as string | undefined,
+        paymentStatus: reg.paymentStatus as string | undefined,
         createdAt: reg.createdAt as string,
       }))
 
@@ -95,6 +98,7 @@ export default function AdminRegistrationsPage() {
         singletSize: reg.singletSize as string | null,
         totalAmount: reg.amountPaid as number,
         paymentMethod: reg.paymentMethod as string,
+        paymentStatus: 'paid' as string,
         staffName: reg.staffName as string | null,
         createdAt: reg.createdAt as string,
       }))
@@ -270,11 +274,23 @@ export default function AdminRegistrationsPage() {
                     </TableCell>
                     {showPaymentCol && (
                       <TableCell>
-                        {reg.paymentMethod ? (
-                          <Badge variant="outline" className="capitalize text-xs">{reg.paymentMethod}</Badge>
-                        ) : (
-                          <span className="text-gray-400">—</span>
-                        )}
+                        <div className="flex flex-col gap-1">
+                          {reg.paymentMethod ? (
+                            <Badge variant="outline" className="capitalize text-xs w-fit">{reg.paymentMethod}</Badge>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                          {reg.paymentStatus && (
+                            <Badge className={`text-[10px] w-fit ${
+                              reg.paymentStatus === 'paid' ? 'bg-green-100 text-green-700 border-green-200' :
+                              reg.paymentStatus === 'pending' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                              reg.paymentStatus === 'failed' ? 'bg-red-100 text-red-700 border-red-200' :
+                              'bg-gray-100 text-gray-700'
+                            }`} variant="outline">
+                              {reg.paymentStatus}
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                     )}
                     {showStaffCol && (

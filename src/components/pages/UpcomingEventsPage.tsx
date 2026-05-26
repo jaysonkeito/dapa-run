@@ -24,13 +24,13 @@ import {
 import {
   Calendar,
   MapPin,
-  Clock,
-  Route,
   Star,
   ArrowRight,
+  ArrowLeft,
   Search,
   Filter,
   Loader2,
+  Banknote,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useToast } from '@/hooks/use-toast'
@@ -46,6 +46,88 @@ interface EventApiData extends EventData {
   singletSizes?: string | null
   distancePricing?: string
   isPackage?: boolean
+}
+
+type PaymentMethod = 'gcash' | 'maya' | 'grabpay' | 'cash' | null
+
+const PAYMENT_METHOD_CONFIG = {
+  gcash: {
+    label: 'GCash',
+    icon: 'gcash',
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50',
+    borderColor: 'border-blue-300',
+    selectedBg: 'bg-blue-50',
+    selectedBorder: 'border-blue-500',
+    description: 'Pay with GCash e-wallet',
+  },
+  maya: {
+    label: 'Maya',
+    icon: 'maya',
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-50',
+    borderColor: 'border-purple-300',
+    selectedBg: 'bg-purple-50',
+    selectedBorder: 'border-purple-500',
+    description: 'Pay with Maya e-wallet',
+  },
+  grabpay: {
+    label: 'GrabPay',
+    icon: 'grabpay',
+    color: 'text-green-600',
+    bgColor: 'bg-green-50',
+    borderColor: 'border-green-300',
+    selectedBg: 'bg-green-50',
+    selectedBorder: 'border-green-500',
+    description: 'Pay with GrabPay',
+  },
+  cash: {
+    label: 'Cash / Pay on Site',
+    icon: 'cash',
+    color: 'text-gray-600',
+    bgColor: 'bg-gray-50',
+    borderColor: 'border-gray-300',
+    selectedBg: 'bg-gray-50',
+    selectedBorder: 'border-gray-400',
+    description: 'Pay cash at the event venue',
+  },
+} as const
+
+function PaymentMethodIcon({ method, className }: { method: keyof typeof PAYMENT_METHOD_CONFIG, className?: string }) {
+  switch (method) {
+    case 'gcash':
+      return (
+        <div className={`flex items-center justify-center ${className || 'w-10 h-10'}`}>
+          <div className="w-full h-full rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-black text-xs tracking-tight shadow-sm">
+            GC
+          </div>
+        </div>
+      )
+    case 'maya':
+      return (
+        <div className={`flex items-center justify-center ${className || 'w-10 h-10'}`}>
+          <div className="w-full h-full rounded-xl bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-black text-xs tracking-tight shadow-sm">
+            MY
+          </div>
+        </div>
+      )
+    case 'grabpay':
+      return (
+        <div className={`flex items-center justify-center ${className || 'w-10 h-10'}`}>
+          <div className="w-full h-full rounded-xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-black text-xs tracking-tight shadow-sm">
+            GP
+          </div>
+        </div>
+      )
+    case 'cash':
+      return (
+        <div className={`flex items-center justify-center ${className || 'w-10 h-10'}`}>
+          <div className="w-full h-full rounded-xl bg-gradient-to-br from-gray-300 to-gray-500 flex items-center justify-center text-white shadow-sm">
+            <Banknote className="w-5 h-5" />
+          </div>
+        </div>
+      )
+  }
 }
 
 export default function UpcomingEventsPage() {
@@ -66,6 +148,10 @@ export default function UpcomingEventsPage() {
   const [finisherShirtSize, setFinisherShirtSize] = useState('')
   const [availSinglet, setAvailSinglet] = useState(false)
   const [singletSize, setSingletSize] = useState('')
+
+  // Payment wizard state
+  const [paymentStep, setPaymentStep] = useState<1 | 2>(1)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(null)
 
   useEffect(() => {
     async function fetchEvents() {
@@ -133,6 +219,8 @@ export default function UpcomingEventsPage() {
     setFinisherShirtSize('')
     setAvailSinglet(false)
     setSingletSize('')
+    setPaymentStep(1)
+    setSelectedPaymentMethod(null)
     setRegDialogOpen(true)
   }
 
@@ -162,29 +250,77 @@ export default function UpcomingEventsPage() {
     return selectedEvent.singletSizes.split(',').map(s => s.trim()).filter(Boolean)
   }, [selectedEvent])
 
-  const handleRegister = async () => {
-    if (!selectedEvent || !regDistance) return
+  // Validate Step 1 before proceeding
+  const validateStep1 = (): boolean => {
+    if (!selectedEvent || !regDistance) return false
 
-    // For package, sizes are included but may need selection
     if (selectedEvent.isPackage) {
       if (finisherSizes.length > 0 && !finisherShirtSize) {
         toast({ title: 'Missing Size', description: 'Please select a finisher shirt size.', variant: 'destructive' })
-        return
+        return false
       }
       if (singletSizesList.length > 0 && !singletSize) {
         toast({ title: 'Missing Size', description: 'Please select a singlet size.', variant: 'destructive' })
-        return
+        return false
       }
     } else {
       if (availFinisherShirt && !finisherShirtSize) {
         toast({ title: 'Missing Size', description: 'Please select a finisher shirt size.', variant: 'destructive' })
-        return
+        return false
       }
       if (availSinglet && !singletSize) {
         toast({ title: 'Missing Size', description: 'Please select a singlet size.', variant: 'destructive' })
-        return
+        return false
       }
     }
+    return true
+  }
+
+  const handleContinueToPayment = () => {
+    if (validateStep1()) {
+      setPaymentStep(2)
+    }
+  }
+
+  // Handle e-wallet payment (GCash, Maya, GrabPay)
+  const handleEWalletPayment = async () => {
+    if (!selectedEvent || !selectedPaymentMethod) return
+    if (selectedPaymentMethod === 'cash') {
+      handleCashPayment()
+      return
+    }
+
+    setRegLoading(true)
+    try {
+      const res = await fetch('/api/payment/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId: selectedEvent.id,
+          distance: regDistance,
+          finisherShirtSize: (selectedEvent.isPackage && finisherSizes.length > 0) ? finisherShirtSize : (availFinisherShirt ? finisherShirtSize : null),
+          singletSize: (selectedEvent.isPackage && singletSizesList.length > 0) ? singletSize : (availSinglet ? singletSize : null),
+          totalAmount,
+          paymentMethod: selectedPaymentMethod,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast({ title: 'Payment Failed', description: data.error || 'Something went wrong.', variant: 'destructive' })
+      } else {
+        // Redirect to PayMongo checkout page
+        window.location.href = data.checkoutUrl
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Something went wrong. Please try again.', variant: 'destructive' })
+    } finally {
+      setRegLoading(false)
+    }
+  }
+
+  // Handle cash payment
+  const handleCashPayment = async () => {
+    if (!selectedEvent) return
 
     setRegLoading(true)
     try {
@@ -197,19 +333,34 @@ export default function UpcomingEventsPage() {
           finisherShirtSize: (selectedEvent.isPackage && finisherSizes.length > 0) ? finisherShirtSize : (availFinisherShirt ? finisherShirtSize : null),
           singletSize: (selectedEvent.isPackage && singletSizesList.length > 0) ? singletSize : (availSinglet ? singletSize : null),
           totalAmount,
+          paymentMethod: 'cash',
         }),
       })
       const data = await res.json()
       if (!res.ok) {
         toast({ title: 'Registration Failed', description: data.error || 'Something went wrong.', variant: 'destructive' })
       } else {
-        toast({ title: 'Registered!', description: `You have registered for ${selectedEvent.title} (${regDistance}). Total: ₱${totalAmount.toLocaleString()}` })
+        toast({ title: 'Registered!', description: `You have registered for ${selectedEvent.title} (${regDistance}). Pay ₱${totalAmount.toLocaleString()} on site.` })
         setRegDialogOpen(false)
+        setPaymentStep(1)
+        setSelectedPaymentMethod(null)
       }
     } catch {
       toast({ title: 'Error', description: 'Something went wrong.', variant: 'destructive' })
     } finally {
       setRegLoading(false)
+    }
+  }
+
+  const handleProceedPayment = () => {
+    if (!selectedPaymentMethod) {
+      toast({ title: 'Select Payment Method', description: 'Please choose a payment method to continue.', variant: 'destructive' })
+      return
+    }
+    if (selectedPaymentMethod === 'cash') {
+      handleCashPayment()
+    } else {
+      handleEWalletPayment()
     }
   }
 
@@ -377,178 +528,333 @@ export default function UpcomingEventsPage() {
       </section>
 
       {/* Registration Dialog */}
-      <Dialog open={regDialogOpen} onOpenChange={setRegDialogOpen}>
+      <Dialog open={regDialogOpen} onOpenChange={(open) => {
+        setRegDialogOpen(open)
+        if (!open) {
+          setPaymentStep(1)
+          setSelectedPaymentMethod(null)
+        }
+      }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogTitle>Register for Event</DialogTitle>
           {selectedEvent && (
             <div className="space-y-4 mt-4">
-              <div>
-                <h3 className="font-bold text-gray-900">{selectedEvent.title}</h3>
-                <p className="text-sm text-gray-500">{selectedEvent.date} • {selectedEvent.time}</p>
-                <p className="text-sm text-gray-500">{selectedEvent.location}</p>
-              </div>
-
-              {/* Distance Selector */}
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-gray-700">Select Distance</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedEvent.distances.map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => setRegDistance(d)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
-                        regDistance === d
-                          ? 'border-orange-500 bg-orange-50 text-orange-600'
-                          : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                      }`}
-                    >
-                      {d}
-                    </button>
-                  ))}
+              {/* Step Indicator */}
+              <div className="flex items-center gap-2 mb-2">
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                  paymentStep === 1
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'bg-orange-100 text-orange-600'
+                }`}>
+                  <span className="w-4 h-4 rounded-full bg-white/30 flex items-center justify-center text-[10px]">1</span>
+                  Details
+                </div>
+                <div className="w-6 h-0.5 bg-gray-200" />
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                  paymentStep === 2
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-400'
+                }`}>
+                  <span className="w-4 h-4 rounded-full bg-white/30 flex items-center justify-center text-[10px]">2</span>
+                  Payment
                 </div>
               </div>
 
-              {/* Price Display based on registration type */}
-              {selectedEvent.isPackage ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between py-2 border-b">
-                    <span className="text-sm text-gray-600">Complete Package</span>
-                    <span className="text-sm font-semibold text-gray-900">₱{totalAmount.toLocaleString()}</span>
-                  </div>
-                  <p className="text-xs text-gray-500">Includes registration, finisher shirt & race singlet</p>
-                  {/* Show size selectors directly (no checkbox needed) */}
-                  {finisherSizes.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-gray-700">Finisher Shirt Size</p>
-                      <Select value={finisherShirtSize} onValueChange={setFinisherShirtSize}>
-                        <SelectTrigger><SelectValue placeholder="Select size" /></SelectTrigger>
-                        <SelectContent>
-                          {finisherSizes.map((size) => (
-                            <SelectItem key={size} value={size}>{size}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  {singletSizesList.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-gray-700">Race Singlet Size</p>
-                      <Select value={singletSize} onValueChange={setSingletSize}>
-                        <SelectTrigger><SelectValue placeholder="Select size" /></SelectTrigger>
-                        <SelectContent>
-                          {singletSizesList.map((size) => (
-                            <SelectItem key={size} value={size}>{size}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </div>
-              ) : (
+              {/* Step 1: Event Details & Options */}
+              {paymentStep === 1 && (
                 <>
-                  {/* Registration Fee */}
-                  {(getDistancePrice(selectedEvent, regDistance) ?? 0) > 0 && (
-                    <div className="flex items-center justify-between py-2 border-b">
-                      <span className="text-sm text-gray-600">Registration Fee</span>
-                      <span className="text-sm font-semibold text-gray-900">₱{getDistancePrice(selectedEvent, regDistance).toLocaleString()}</span>
-                    </div>
-                  )}
+                  <div>
+                    <h3 className="font-bold text-gray-900">{selectedEvent.title}</h3>
+                    <p className="text-sm text-gray-500">{selectedEvent.date} • {selectedEvent.time}</p>
+                    <p className="text-sm text-gray-500">{selectedEvent.location}</p>
+                  </div>
 
-                  {/* Finisher Shirt Add-on */}
-                  {(selectedEvent.finisherShirtPrice ?? 0) > 0 && (
-                    <div className="border rounded-lg p-3 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Checkbox
-                            id="finisher-shirt"
-                            checked={availFinisherShirt}
-                            onCheckedChange={(checked) => {
-                              setAvailFinisherShirt(!!checked)
-                              if (!checked) setFinisherShirtSize('')
-                            }}
-                          />
-                          <label htmlFor="finisher-shirt" className="text-sm font-medium text-gray-700 cursor-pointer">
-                            Avail Finisher Shirt
-                          </label>
-                        </div>
-                        <span className="text-sm font-semibold text-gray-900">+₱{(selectedEvent.finisherShirtPrice ?? 0).toLocaleString()}</span>
+                  {/* Distance Selector */}
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-gray-700">Select Distance</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedEvent.distances.map((d) => (
+                        <button
+                          key={d}
+                          onClick={() => setRegDistance(d)}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
+                            regDistance === d
+                              ? 'border-orange-500 bg-orange-50 text-orange-600'
+                              : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                          }`}
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Price Display based on registration type */}
+                  {selectedEvent.isPackage ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between py-2 border-b">
+                        <span className="text-sm text-gray-600">Complete Package</span>
+                        <span className="text-sm font-semibold text-gray-900">₱{totalAmount.toLocaleString()}</span>
                       </div>
-                      {availFinisherShirt && finisherSizes.length > 0 && (
-                        <Select value={finisherShirtSize} onValueChange={setFinisherShirtSize}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select size" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {finisherSizes.map((size) => (
-                              <SelectItem key={size} value={size}>{size}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                      <p className="text-xs text-gray-500">Includes registration, finisher shirt & race singlet</p>
+                      {/* Show size selectors directly (no checkbox needed) */}
+                      {finisherSizes.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-gray-700">Finisher Shirt Size</p>
+                          <Select value={finisherShirtSize} onValueChange={setFinisherShirtSize}>
+                            <SelectTrigger><SelectValue placeholder="Select size" /></SelectTrigger>
+                            <SelectContent>
+                              {finisherSizes.map((size) => (
+                                <SelectItem key={size} value={size}>{size}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      {singletSizesList.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-gray-700">Race Singlet Size</p>
+                          <Select value={singletSize} onValueChange={setSingletSize}>
+                            <SelectTrigger><SelectValue placeholder="Select size" /></SelectTrigger>
+                            <SelectContent>
+                              {singletSizesList.map((size) => (
+                                <SelectItem key={size} value={size}>{size}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       )}
                     </div>
+                  ) : (
+                    <>
+                      {/* Registration Fee */}
+                      {(getDistancePrice(selectedEvent, regDistance) ?? 0) > 0 && (
+                        <div className="flex items-center justify-between py-2 border-b">
+                          <span className="text-sm text-gray-600">Registration Fee</span>
+                          <span className="text-sm font-semibold text-gray-900">₱{getDistancePrice(selectedEvent, regDistance).toLocaleString()}</span>
+                        </div>
+                      )}
+
+                      {/* Finisher Shirt Add-on */}
+                      {(selectedEvent.finisherShirtPrice ?? 0) > 0 && (
+                        <div className="border rounded-lg p-3 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                id="finisher-shirt"
+                                checked={availFinisherShirt}
+                                onCheckedChange={(checked) => {
+                                  setAvailFinisherShirt(!!checked)
+                                  if (!checked) setFinisherShirtSize('')
+                                }}
+                              />
+                              <label htmlFor="finisher-shirt" className="text-sm font-medium text-gray-700 cursor-pointer">
+                                Avail Finisher Shirt
+                              </label>
+                            </div>
+                            <span className="text-sm font-semibold text-gray-900">+₱{(selectedEvent.finisherShirtPrice ?? 0).toLocaleString()}</span>
+                          </div>
+                          {availFinisherShirt && finisherSizes.length > 0 && (
+                            <Select value={finisherShirtSize} onValueChange={setFinisherShirtSize}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select size" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {finisherSizes.map((size) => (
+                                  <SelectItem key={size} value={size}>{size}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Singlet Add-on */}
+                      {(selectedEvent.singletPrice ?? 0) > 0 && (
+                        <div className="border rounded-lg p-3 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                id="singlet"
+                                checked={availSinglet}
+                                onCheckedChange={(checked) => {
+                                  setAvailSinglet(!!checked)
+                                  if (!checked) setSingletSize('')
+                                }}
+                              />
+                              <label htmlFor="singlet" className="text-sm font-medium text-gray-700 cursor-pointer">
+                                Avail Singlet
+                              </label>
+                            </div>
+                            <span className="text-sm font-semibold text-gray-900">+₱{(selectedEvent.singletPrice ?? 0).toLocaleString()}</span>
+                          </div>
+                          {availSinglet && singletSizesList.length > 0 && (
+                            <Select value={singletSize} onValueChange={setSingletSize}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select size" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {singletSizesList.map((size) => (
+                                  <SelectItem key={size} value={size}>{size}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                      )}
+                    </>
                   )}
 
-                  {/* Singlet Add-on */}
-                  {(selectedEvent.singletPrice ?? 0) > 0 && (
-                    <div className="border rounded-lg p-3 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Checkbox
-                            id="singlet"
-                            checked={availSinglet}
-                            onCheckedChange={(checked) => {
-                              setAvailSinglet(!!checked)
-                              if (!checked) setSingletSize('')
-                            }}
-                          />
-                          <label htmlFor="singlet" className="text-sm font-medium text-gray-700 cursor-pointer">
-                            Avail Singlet
-                          </label>
-                        </div>
-                        <span className="text-sm font-semibold text-gray-900">+₱{(selectedEvent.singletPrice ?? 0).toLocaleString()}</span>
-                      </div>
-                      {availSinglet && singletSizesList.length > 0 && (
-                        <Select value={singletSize} onValueChange={setSingletSize}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select size" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {singletSizesList.map((size) => (
-                              <SelectItem key={size} value={size}>{size}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
+                  {/* Total Amount */}
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-gray-700">Total Amount</span>
+                      <span className="text-lg font-bold text-orange-600">₱{totalAmount.toLocaleString()}</span>
                     </div>
-                  )}
+                  </div>
+
+                  <Button
+                    onClick={handleContinueToPayment}
+                    className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold shadow-lg"
+                  >
+                    Continue to Payment
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
                 </>
               )}
 
-              {/* Total Amount */}
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-gray-700">Total Amount</span>
-                  <span className="text-lg font-bold text-orange-600">₱{totalAmount.toLocaleString()}</span>
-                </div>
-              </div>
+              {/* Step 2: Payment Method Selection */}
+              {paymentStep === 2 && (
+                <>
+                  {/* Order Summary */}
+                  <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Order Summary</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700">{selectedEvent.title} — {regDistance}</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-1 border-t">
+                      <span className="text-sm font-semibold text-gray-700">Total</span>
+                      <span className="text-lg font-bold text-orange-600">₱{totalAmount.toLocaleString()}</span>
+                    </div>
+                  </div>
 
-              <Button
-                onClick={handleRegister}
-                disabled={regLoading}
-                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold shadow-lg"
-              >
-                {regLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Registering...
-                  </>
-                ) : (
-                  <>
-                    Confirm Registration — ₱{totalAmount.toLocaleString()}
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </>
-                )}
-              </Button>
+                  {/* Payment Method Selection */}
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700 mb-3">Select Payment Method</p>
+                      
+                      {/* E-Wallets Section */}
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">E-Wallets</p>
+                      <div className="grid grid-cols-3 gap-3 mb-4">
+                        {(['gcash', 'maya', 'grabpay'] as const).map((method) => {
+                          const config = PAYMENT_METHOD_CONFIG[method]
+                          const isSelected = selectedPaymentMethod === method
+                          return (
+                            <button
+                              key={method}
+                              onClick={() => setSelectedPaymentMethod(method)}
+                              className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 hover:shadow-md ${
+                                isSelected
+                                  ? `${config.selectedBorder} ${config.selectedBg} shadow-sm`
+                                  : 'border-gray-200 hover:border-gray-300 bg-white'
+                              }`}
+                            >
+                              <PaymentMethodIcon method={method} />
+                              <span className={`text-xs font-bold ${isSelected ? config.color : 'text-gray-600'}`}>
+                                {config.label}
+                              </span>
+                              {isSelected && (
+                                <div className="w-4 h-4 rounded-full bg-orange-500 flex items-center justify-center">
+                                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </div>
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
+
+                      {/* Other Methods Section */}
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Other Methods</p>
+                      <button
+                        onClick={() => setSelectedPaymentMethod('cash')}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200 hover:shadow-md ${
+                          selectedPaymentMethod === 'cash'
+                            ? 'border-orange-500 bg-orange-50 shadow-sm'
+                            : 'border-gray-200 hover:border-gray-300 bg-white'
+                        }`}
+                      >
+                        <PaymentMethodIcon method="cash" />
+                        <div className="text-left flex-1">
+                          <p className={`text-sm font-bold ${selectedPaymentMethod === 'cash' ? 'text-orange-600' : 'text-gray-700'}`}>
+                            Cash / Pay on Site
+                          </p>
+                          <p className="text-xs text-gray-500">Pay at the event venue on race day</p>
+                        </div>
+                        {selectedPaymentMethod === 'cash' && (
+                          <div className="w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center shrink-0">
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Payment Method Info */}
+                    {selectedPaymentMethod && selectedPaymentMethod !== 'cash' && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <p className="text-xs text-blue-700">
+                          <span className="font-semibold">Note:</span> You will be redirected to {PAYMENT_METHOD_CONFIG[selectedPaymentMethod].label}&apos;s payment page to complete your transaction.
+                        </p>
+                      </div>
+                    )}
+                    {selectedPaymentMethod === 'cash' && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        <p className="text-xs text-amber-700">
+                          <span className="font-semibold">Note:</span> Your registration will be marked as pending until payment is received on site.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="space-y-2">
+                    <Button
+                      onClick={handleProceedPayment}
+                      disabled={regLoading || !selectedPaymentMethod}
+                      className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold shadow-lg"
+                    >
+                      {regLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : selectedPaymentMethod === 'cash' ? (
+                        <>
+                          Confirm Registration — ₱{totalAmount.toLocaleString()}
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </>
+                      ) : (
+                        <>
+                          Proceed to Payment — ₱{totalAmount.toLocaleString()}
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={() => setPaymentStep(1)}
+                      variant="outline"
+                      className="w-full font-semibold"
+                      disabled={regLoading}
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Back to Details
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </DialogContent>
