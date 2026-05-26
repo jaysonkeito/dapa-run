@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useStore } from '@/store/useStore'
-import { merchandise as fallbackMerch, type MerchItem } from '@/lib/data'
+import { type MerchItem } from '@/lib/data'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -42,13 +42,7 @@ export default function MerchandisePage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [selectedProduct, setSelectedProduct] = useState<DbMerchItem | null>(null)
   const [selectedSize, setSelectedSize] = useState<string>('')
-  const [items, setItems] = useState<DbMerchItem[]>(fallbackMerch.map(m => ({
-    ...m,
-    sizes: m.sizes?.join(',') || null,
-    badge: m.badge || null,
-    stock: 100,
-    soldCount: 0,
-  })))
+  const [items, setItems] = useState<DbMerchItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -57,7 +51,7 @@ export default function MerchandisePage() {
         const res = await fetch('/api/merchandise')
         if (res.ok) {
           const data = await res.json()
-          if (data.length > 0) setItems(data)
+          setItems(data)
         }
       } catch (error) {
         console.error('Failed to fetch merchandise:', error)

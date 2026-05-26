@@ -1,7 +1,7 @@
 'use client'
 
 import { useStore } from '@/store/useStore'
-import { upcomingEvents as fallbackUpcoming, stats } from '@/lib/data'
+import { stats } from '@/lib/data'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -78,10 +78,7 @@ const statIcons = [Trophy, Users, Route, Map]
 
 export default function HomePage() {
   const { setCurrentPage } = useStore()
-  const [upcomingEvents, setUpcomingEvents] = useState<DbEvent[]>(fallbackUpcoming.map(e => ({
-    ...e,
-    distances: e.distances.join(','),
-  })))
+  const [upcomingEvents, setUpcomingEvents] = useState<DbEvent[]>([])
   const [siteSettings, setSiteSettings] = useState({
     heroHeading: '',
     heroDescription: '',
@@ -103,7 +100,7 @@ export default function HomePage() {
         const res = await fetch('/api/events?status=upcoming')
         if (res.ok) {
           const data = await res.json()
-          if (data.length > 0) setUpcomingEvents(data)
+          setUpcomingEvents(data)
         }
       } catch (error) {
         console.error('Failed to fetch events:', error)
@@ -161,9 +158,11 @@ export default function HomePage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30 mb-6 px-4 py-1.5 text-sm font-medium">
-                🏃 Next Event: {featuredEvent?.date}
-              </Badge>
+              {featuredEvent && (
+                <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30 mb-6 px-4 py-1.5 text-sm font-medium">
+                  🏃 Next Event: {featuredEvent.date}
+                </Badge>
+              )}
             </motion.div>
             <motion.h1
               initial={{ opacity: 0, y: 30 }}
@@ -322,6 +321,11 @@ export default function HomePage() {
             </Button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {upcomingEvents.length === 0 ? (
+              <div className="col-span-full text-center py-12">
+                <p className="text-gray-500">No upcoming events at the moment. Stay tuned!</p>
+              </div>
+            ) : null}
             {upcomingEvents.slice(0, 3).map((event, i) => {
               const distances = event.distances.split(',').filter(Boolean)
               return (

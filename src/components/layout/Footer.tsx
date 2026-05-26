@@ -2,7 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useStore } from '@/store/useStore'
-import { upcomingEvents } from '@/lib/data'
+
+interface FooterEvent {
+  id: string
+  title: string
+  date: string
+  location: string
+}
 
 export default function Footer() {
   const { setCurrentPage } = useStore()
@@ -16,6 +22,7 @@ export default function Footer() {
     site_address: '',
     site_facebook: '',
   })
+  const [nextEvent, setNextEvent] = useState<FooterEvent | null>(null)
 
   useEffect(() => {
     fetch('/api/settings')
@@ -34,6 +41,22 @@ export default function Footer() {
         }))
       })
       .catch(() => { /* use defaults */ })
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/events?status=upcoming')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.length > 0) {
+          setNextEvent({
+            id: data[0].id,
+            title: data[0].title,
+            date: data[0].date,
+            location: data[0].location,
+          })
+        }
+      })
+      .catch(() => {})
   }, [])
 
   const currentYear = new Date().getFullYear()
@@ -88,11 +111,11 @@ export default function Footer() {
           {/* Upcoming Event */}
           <div>
             <h4 className="font-semibold text-sm uppercase tracking-wider text-orange-400 mb-4">Next Event</h4>
-            {upcomingEvents[0] && (
+            {nextEvent ? (
               <div className="bg-gray-800 rounded-lg p-4">
-                <p className="text-sm font-semibold text-white">{upcomingEvents[0].title}</p>
-                <p className="text-xs text-gray-400 mt-1">{upcomingEvents[0].date}</p>
-                <p className="text-xs text-gray-400">{upcomingEvents[0].location}</p>
+                <p className="text-sm font-semibold text-white">{nextEvent.title}</p>
+                <p className="text-xs text-gray-400 mt-1">{nextEvent.date}</p>
+                <p className="text-xs text-gray-400">{nextEvent.location}</p>
                 <button
                   onClick={() => { setCurrentPage('upcoming'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
                   className="mt-3 text-orange-400 text-xs font-semibold hover:text-orange-300 transition-colors"
@@ -100,6 +123,8 @@ export default function Footer() {
                   Register Now →
                 </button>
               </div>
+            ) : (
+              <p className="text-gray-500 text-sm">No upcoming events</p>
             )}
           </div>
 

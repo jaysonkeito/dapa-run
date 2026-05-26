@@ -77,6 +77,12 @@ export default function UserAuthModal() {
             description: 'Redirecting to the Dashboard...',
           })
           window.location.href = '/admin/dashboard'
+        } else if (userRole === 'developer') {
+          toast({
+            title: 'Welcome, Developer!',
+            description: 'Redirecting to the Developer Dashboard...',
+          })
+          window.location.href = '/admin/dev-dashboard'
         } else {
           // Check if there's a pending cart item (user tried to add to cart before logging in)
           if (pendingCartItem) {

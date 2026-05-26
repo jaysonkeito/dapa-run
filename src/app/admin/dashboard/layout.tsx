@@ -117,7 +117,7 @@ export default function AdminDashboardLayout({
           {!collapsed && (
             <div className="flex flex-col min-w-0">
               <h1 className="text-white font-bold text-lg">DAPA RUN</h1>
-              <span className="text-gray-400 text-[10px] font-light tracking-[0.15em] -mt-1 truncate">{siteSettings.siteNameSuffix}</span>
+              <span className="text-gray-400 text-[15px] font-light tracking-[0.15em] -mt-1 truncate">{siteSettings.siteNameSuffix}</span>
             </div>
           )}
         </div>
@@ -198,7 +198,7 @@ export default function AdminDashboardLayout({
                 </div>
                 <div className="flex flex-col">
                   <h1 className="text-white font-bold text-lg">DAPA RUN</h1>
-                  <span className="text-gray-400 text-[10px] font-light tracking-[0.15em] -mt-1">{siteSettings.siteNameSuffix}</span>
+                  <span className="text-gray-400 text-[15px] font-light tracking-[0.15em] -mt-1">{siteSettings.siteNameSuffix}</span>
                 </div>
               </div>
               <button onClick={() => setSidebarOpen(false)} className="text-gray-400 hover:text-white">

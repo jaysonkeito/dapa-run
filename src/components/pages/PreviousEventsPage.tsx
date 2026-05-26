@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useStore } from '@/store/useStore'
-import { previousEvents as fallbackEvents, type EventData } from '@/lib/data'
+import { type EventData } from '@/lib/data'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -26,7 +26,7 @@ import { motion } from 'framer-motion'
 export default function PreviousEventsPage() {
   const { setCurrentPage, setSelectedResultEvent } = useStore()
   const [searchQuery, setSearchQuery] = useState('')
-  const [events, setEvents] = useState<EventData[]>(fallbackEvents)
+  const [events, setEvents] = useState<EventData[]>([])
   const [loading, setLoading] = useState(true)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [allEvents, setAllEvents] = useState<EventData[]>([]) // for calendar
@@ -37,22 +37,20 @@ export default function PreviousEventsPage() {
         const res = await fetch('/api/events?status=past')
         if (res.ok) {
           const data = await res.json()
-          if (data.length > 0) {
-            const mapped: EventData[] = data.map((e: Record<string, unknown>) => ({
-              id: e.id as string,
-              title: e.title as string,
-              date: e.date as string,
-              time: e.time as string,
-              location: e.location as string,
-              priceRange: e.priceRange as string,
-              image: e.image as string,
-              distances: (e.distances as string).split(','),
-              description: e.description as string,
-              status: e.status as 'upcoming' | 'past',
-              featured: e.featured as boolean,
-            }))
-            setEvents(mapped)
-          }
+          const mapped: EventData[] = data.map((e: Record<string, unknown>) => ({
+            id: e.id as string,
+            title: e.title as string,
+            date: e.date as string,
+            time: e.time as string,
+            location: e.location as string,
+            priceRange: e.priceRange as string,
+            image: e.image as string,
+            distances: (e.distances as string).split(','),
+            description: e.description as string,
+            status: e.status as 'upcoming' | 'past',
+            featured: e.featured as boolean,
+          }))
+          setEvents(mapped)
         }
       } catch (error) {
         console.error('Failed to fetch events:', error)

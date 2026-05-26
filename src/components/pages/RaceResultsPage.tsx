@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useStore } from '@/store/useStore'
-import { raceResults as fallbackResults, type RaceResultData } from '@/lib/data'
+import { type RaceResultData } from '@/lib/data'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -83,7 +83,7 @@ function FinisherRow({ finisher }: { finisher: { rank: number; bib: string; name
 export default function RaceResultsPage() {
   const { selectedResultEvent, setSelectedResultEvent } = useStore()
   const [selectedDistance, setSelectedDistance] = useState<string>('all')
-  const [results, setResults] = useState<RaceResultData[]>(fallbackResults)
+  const [results, setResults] = useState<RaceResultData[]>([])
   const [loading, setLoading] = useState(true)
 
   // Bib search state
@@ -171,24 +171,22 @@ export default function RaceResultsPage() {
         const res = await fetch('/api/results')
         if (res.ok) {
           const data = await res.json()
-          if (data.length > 0) {
-            const mapped: RaceResultData[] = data.map((r: Record<string, unknown>) => {
-              const event = r.event as Record<string, unknown>
-              let finishersArr: RaceResultData['finishers'] = []
-              try {
-                finishersArr = JSON.parse(r.finishers as string)
-              } catch { /* use empty */ }
-              return {
-                id: r.id as string,
-                eventId: r.eventId as string,
-                eventName: event?.title as string || 'Unknown Event',
-                eventDate: event?.date as string || '',
-                distance: r.distance as string,
-                finishers: finishersArr,
-              }
-            })
-            setResults(mapped)
-          }
+          const mapped: RaceResultData[] = data.map((r: Record<string, unknown>) => {
+            const event = r.event as Record<string, unknown>
+            let finishersArr: RaceResultData['finishers'] = []
+            try {
+              finishersArr = JSON.parse(r.finishers as string)
+            } catch { /* use empty */ }
+            return {
+              id: r.id as string,
+              eventId: r.eventId as string,
+              eventName: event?.title as string || 'Unknown Event',
+              eventDate: event?.date as string || '',
+              distance: r.distance as string,
+              finishers: finishersArr,
+            }
+          })
+          setResults(mapped)
         }
       } catch (error) {
         console.error('Failed to fetch results:', error)

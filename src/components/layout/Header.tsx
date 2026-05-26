@@ -99,7 +99,7 @@ export default function Header() {
                   <span className="text-lg sm:text-2xl font-black tracking-tight text-gray-900 group-hover:text-orange-600 transition-colors">
                     DAPA RUN
                   </span>
-                  <span className="text-[10px] sm:text-xs font-light tracking-[0.15em] text-gray-400 -mt-1" style={{ letterSpacing: '0.15em' }}>
+                  <span className="text-[15px] font-light tracking-[0.15em] text-gray-400 -mt-1" style={{ letterSpacing: '0.15em' }}>
                     {siteSettings.siteNameSuffix}
                   </span>
                 </div>
@@ -118,6 +118,16 @@ export default function Header() {
                       >
                         <Shield className="w-4 h-4 mr-1" />
                         Dashboard
+                      </Button>
+                    ) : (session.user as Record<string, unknown>)?.role === 'developer' ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.location.href = '/admin/dev-dashboard'}
+                        className="border-teal-500 text-teal-600 hover:bg-teal-50 font-semibold"
+                      >
+                        <Shield className="w-4 h-4 mr-1" />
+                        Dev Panel
                       </Button>
                     ) : null}
                     <div className="flex items-center gap-2 text-sm">
@@ -189,7 +199,7 @@ export default function Header() {
                           </div>
                           <div>
                             <h2 className="text-white font-bold text-lg">DAPA RUN</h2>
-                            <p className="text-white/70 text-xs font-light tracking-[0.15em]">{siteSettings.siteNameSuffix}</p>
+                            <p className="text-white/70 text-[15px] font-light tracking-[0.15em]">{siteSettings.siteNameSuffix}</p>
                           </div>
                         </div>
                       </div>
@@ -236,6 +246,14 @@ export default function Header() {
                               >
                                 <Shield className="w-4 h-4 mr-2" />
                                 Dashboard
+                              </Button>
+                            ) : (session.user as Record<string, unknown>)?.role === 'developer' ? (
+                              <Button
+                                onClick={() => { window.location.href = '/admin/dev-dashboard'; setMobileMenuOpen(false) }}
+                                className="w-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-semibold"
+                              >
+                                <Shield className="w-4 h-4 mr-2" />
+                                Dev Panel
                               </Button>
                             ) : null}
                             <Button

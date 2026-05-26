@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useStore } from '@/store/useStore'
-import { upcomingEvents as fallbackEvents, type EventData } from '@/lib/data'
+import { type EventData } from '@/lib/data'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -54,7 +54,7 @@ export default function UpcomingEventsPage() {
   const { toast } = useToast()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedDistance, setSelectedDistance] = useState<string>('all')
-  const [events, setEvents] = useState<EventApiData[]>(fallbackEvents)
+  const [events, setEvents] = useState<EventApiData[]>([])
   const [loading, setLoading] = useState(true)
   const [regDialogOpen, setRegDialogOpen] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<EventApiData | null>(null)
@@ -73,31 +73,29 @@ export default function UpcomingEventsPage() {
         const res = await fetch('/api/events?status=upcoming')
         if (res.ok) {
           const data = await res.json()
-          if (data.length > 0) {
-            const mapped: EventApiData[] = data.map((e: Record<string, unknown>) => ({
-              id: e.id as string,
-              title: e.title as string,
-              date: e.date as string,
-              time: e.time as string,
-              location: e.location as string,
-              priceRange: e.priceRange as string,
-              image: e.image as string,
-              distances: (e.distances as string).split(','),
-              description: e.description as string,
-              status: e.status as 'upcoming' | 'past',
-              featured: e.featured as boolean,
-              regCloseDate: (e.regCloseDate as string) || '',
-              regCloseTime: (e.regCloseTime as string) || '',
-              basePrice: (e.basePrice as number) || 0,
-              finisherShirtPrice: (e.finisherShirtPrice as number) || 0,
-              singletPrice: (e.singletPrice as number) || 0,
-              finisherShirtSizes: (e.finisherShirtSizes as string | null) || null,
-              singletSizes: (e.singletSizes as string | null) || null,
-              distancePricing: (e.distancePricing as string) || '',
-              isPackage: (e.isPackage as boolean) || false,
-            }))
-            setEvents(mapped)
-          }
+          const mapped: EventApiData[] = data.map((e: Record<string, unknown>) => ({
+            id: e.id as string,
+            title: e.title as string,
+            date: e.date as string,
+            time: e.time as string,
+            location: e.location as string,
+            priceRange: e.priceRange as string,
+            image: e.image as string,
+            distances: (e.distances as string).split(','),
+            description: e.description as string,
+            status: e.status as 'upcoming' | 'past',
+            featured: e.featured as boolean,
+            regCloseDate: (e.regCloseDate as string) || '',
+            regCloseTime: (e.regCloseTime as string) || '',
+            basePrice: (e.basePrice as number) || 0,
+            finisherShirtPrice: (e.finisherShirtPrice as number) || 0,
+            singletPrice: (e.singletPrice as number) || 0,
+            finisherShirtSizes: (e.finisherShirtSizes as string | null) || null,
+            singletSizes: (e.singletSizes as string | null) || null,
+            distancePricing: (e.distancePricing as string) || '',
+            isPackage: (e.isPackage as boolean) || false,
+          }))
+          setEvents(mapped)
         }
       } catch (error) {
         console.error('Failed to fetch events:', error)

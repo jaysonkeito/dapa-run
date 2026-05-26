@@ -60,6 +60,8 @@ function AdminLoginForm() {
         // Use window.location for a full page navigation to ensure
         // middleware picks up the new session cookie
         window.location.href = '/admin/dashboard'
+      } else if (session?.user?.role === 'developer') {
+        window.location.href = '/admin/dev-dashboard'
       } else {
         setError('Access denied. Admin or staff credentials required.')
         setLoading(false)
