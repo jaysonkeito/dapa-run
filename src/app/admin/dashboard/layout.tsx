@@ -22,7 +22,6 @@ import {
   FileText,
   ChevronsLeft,
   ChevronsRight,
-  Package,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -34,7 +33,6 @@ const allSidebarItems = [
   { label: 'Inventory', href: '/admin/dashboard/merchandise', icon: ShoppingBag, roles: ['admin'] },
   { label: 'Race Results', href: '/admin/dashboard/results', icon: Trophy, roles: ['admin', 'staff'] },
   { label: 'Registrations', href: '/admin/dashboard/registrations', icon: ClipboardList, roles: ['admin', 'staff'] },
-  { label: 'Online Orders', href: '/admin/dashboard/online-orders', icon: Package, roles: ['admin', 'staff'] },
   { label: 'On-site Registration', href: '/admin/dashboard/onsite-registration', icon: UserPlus, roles: ['admin', 'staff'] },
   { label: 'Sales Counter', href: '/admin/dashboard/pos', icon: Monitor, roles: ['admin', 'staff'] },
   { label: 'Sales Analytics', href: '/admin/dashboard/pos-analytics', icon: PieChart, roles: ['admin'] },
@@ -118,8 +116,8 @@ export default function AdminDashboardLayout({
           </div>
           {!collapsed && (
             <div className="flex flex-col min-w-0">
-              <h1 className="text-white font-bold text-xl">DAPA RUN</h1>
-              <span className="text-gray-400 text-xs font-light tracking-[0.15em] -mt-0.5 truncate">{siteSettings.siteNameSuffix}</span>
+              <h1 className="text-white font-bold text-lg">DAPA RUN</h1>
+              <span className="text-gray-400 text-xl font-light tracking-[0.15em] -mt-0.5 truncate">{siteSettings.siteNameSuffix}</span>
             </div>
           )}
         </div>
@@ -199,8 +197,8 @@ export default function AdminDashboardLayout({
                   <img src="/dapa-run-logo.png" alt="DAPA RUN" className="w-full h-full object-cover" />
                 </div>
                 <div className="flex flex-col">
-                  <h1 className="text-white font-bold text-xl">DAPA RUN</h1>
-                  <span className="text-gray-400 text-xs font-light tracking-[0.15em] -mt-0.5">{siteSettings.siteNameSuffix}</span>
+                  <h1 className="text-white font-bold text-lg">DAPA RUN</h1>
+                  <span className="text-gray-400 text-xl font-light tracking-[0.15em] -mt-0.5">{siteSettings.siteNameSuffix}</span>
                 </div>
               </div>
               <button onClick={() => setSidebarOpen(false)} className="text-gray-400 hover:text-white">
