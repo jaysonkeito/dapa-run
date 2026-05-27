@@ -235,7 +235,7 @@ export default function Header() {
                 </Button>
               </div>
 
-              {/* Mobile - Cart + Menu */}
+              {/* Mobile - Profile + Menu */}
               <div className="flex items-center gap-2 md:hidden">
                 {mounted && session?.user && (
                   <button
@@ -245,19 +245,6 @@ export default function Header() {
                     {session.user.name?.charAt(0).toUpperCase() || 'U'}
                   </button>
                 )}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleNavClick('cart')}
-                  className="relative"
-                >
-                  <ShoppingCart className="w-5 h-5" />
-                  {count > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center animate-bounce">
-                      {count}
-                    </span>
-                  )}
-                </Button>
                 <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                   <SheetTrigger asChild>
                     <Button variant="ghost" size="icon">
