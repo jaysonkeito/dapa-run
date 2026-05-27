@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { CheckCircle, ArrowRight, Loader2, ShoppingBag, Trophy } from 'lucide-react'
+import { CheckCircle, ArrowRight, Loader2, ShoppingBag, Download, Receipt } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 function PaymentSuccessContent() {
@@ -49,6 +49,11 @@ function PaymentSuccessContent() {
   }, [ref, type])
 
   const isMerch = type === 'merch'
+
+  const handleDownloadReceipt = () => {
+    if (!ref) return
+    window.open(`/receipt?id=${ref}`, '_blank')
+  }
 
   return (
     <div className={`min-h-screen flex items-center justify-center p-4 ${isMerch ? 'bg-gradient-to-br from-blue-50 to-indigo-50' : 'bg-gradient-to-br from-green-50 to-emerald-50'}`}>
@@ -115,6 +120,26 @@ function PaymentSuccessContent() {
               <p className="text-xs text-gray-400 mb-6">
                 Reference: {ref}
               </p>
+            )}
+
+            {/* Receipt download for registration payments */}
+            {!isMerch && paymentConfirmed && ref && (
+              <div className="mb-4 p-4 bg-orange-50 rounded-xl border border-orange-200">
+                <div className="flex items-center gap-2 mb-2 justify-center">
+                  <Receipt className="w-5 h-5 text-orange-600" />
+                  <span className="font-semibold text-orange-800">Download Your Receipt</span>
+                </div>
+                <p className="text-xs text-orange-600 mb-3">
+                  Present this receipt to the staff/organizer to claim your race kit
+                </p>
+                <Button
+                  onClick={handleDownloadReceipt}
+                  className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold shadow-lg"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Receipt (JPG)
+                </Button>
+              </div>
             )}
 
             <div className="space-y-3">

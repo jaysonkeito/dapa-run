@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Loader2, Download } from 'lucide-react'
+import { Loader2, Download, FileText } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { generateCSV, formatDateForReport, formatPriceForReport } from '@/lib/report-utils'
 
@@ -220,6 +220,7 @@ export default function AdminRegistrationsPage() {
                 {showPaymentCol && <TableHead>Payment Method</TableHead>}
                 {showStaffCol && <TableHead>Staff</TableHead>}
                 <TableHead>Date</TableHead>
+                <TableHead>Receipt</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -302,6 +303,22 @@ export default function AdminRegistrationsPage() {
                         month: 'long',
                         day: 'numeric',
                       })}
+                    </TableCell>
+                    <TableCell>
+                      {reg.type === 'online' && reg.paymentStatus === 'paid' ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => window.open(`/receipt?id=${reg.id}`, '_blank')}
+                          className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                          title="View / Download Receipt"
+                        >
+                          <FileText className="w-4 h-4 mr-1" />
+                          Receipt
+                        </Button>
+                      ) : (
+                        <span className="text-gray-400 text-xs">—</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

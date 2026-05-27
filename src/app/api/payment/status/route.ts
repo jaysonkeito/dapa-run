@@ -47,6 +47,24 @@ export async function GET(req: NextRequest) {
           paymentStatus: true,
           paymentMethod: true,
           totalAmount: true,
+          distance: true,
+          finisherShirtSize: true,
+          singletSize: true,
+          paymentReference: true,
+          paidAt: true,
+          event: {
+            select: {
+              title: true,
+              date: true,
+              location: true,
+            },
+          },
+          user: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
         },
       })
 
@@ -59,6 +77,11 @@ export async function GET(req: NextRequest) {
 
       return NextResponse.json({
         ...registration,
+        eventName: registration.event.title,
+        eventDate: registration.event.date,
+        eventLocation: registration.event.location,
+        participantName: registration.user.name,
+        participantEmail: registration.user.email,
         type: "registration",
       })
     }
