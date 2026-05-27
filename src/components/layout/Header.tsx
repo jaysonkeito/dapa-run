@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useStore, type Page } from '@/store/useStore'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,9 @@ import {
   LogOut,
   User,
   Shield,
+  ChevronDown,
+  ClipboardList,
+  Settings,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -24,6 +27,7 @@ const navItems: { label: string; page: Page }[] = [
   { label: 'Previous Events', page: 'previous' },
   { label: 'Race Results', page: 'results' },
   { label: 'Merchandise', page: 'merchandise' },
+  { label: 'Cart', page: 'cart' },
 ]
 
 export default function Header() {
@@ -32,6 +36,8 @@ export default function Header() {
   const count = cartCount()
   const [scrolled, setScrolled] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
+  const profileDropdownRef = useRef<HTMLDivElement>(null)
   const [siteSettings, setSiteSettings] = useState({ siteNameSuffix: 'Dumaguete', siteTitle: 'DAPA RUN - Dumaguete' })
   const [contactSettings, setContactSettings] = useState({ site_phone: '', site_email: '', site_address: '', site_maps_embed: '', site_facebook: '' })
 
@@ -68,10 +74,23 @@ export default function Header() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  // Close profile dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+        setProfileDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   const handleNavClick = (page: Page) => {
     setCurrentPage(page)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+
+  const userRole = mounted && session?.user ? (session.user as Record<string, unknown>)?.role as string : null
 
   return (
     <>
@@ -105,11 +124,12 @@ export default function Header() {
                 </div>
               </button>
 
-              {/* Right side - Contact CTA + Cart (desktop) */}
+              {/* Right side - Desktop */}
               <div className="hidden md:flex items-center gap-4">
                 {mounted && session?.user ? (
-                  <div className="flex items-center gap-3">
-                    {(session.user as Record<string, unknown>)?.role === 'admin' || (session.user as Record<string, unknown>)?.role === 'staff' ? (
+                  <>
+                    {/* Dashboard button for admin/staff/developer */}
+                    {(userRole === 'admin' || userRole === 'staff') && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -119,7 +139,8 @@ export default function Header() {
                         <Shield className="w-4 h-4 mr-1" />
                         Dashboard
                       </Button>
-                    ) : (session.user as Record<string, unknown>)?.role === 'developer' ? (
+                    )}
+                    {userRole === 'developer' && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -129,23 +150,72 @@ export default function Header() {
                         <Shield className="w-4 h-4 mr-1" />
                         Dev Panel
                       </Button>
-                    ) : null}
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
-                        <User className="w-4 h-4 text-orange-600" />
-                      </div>
-                      <span className="font-medium text-gray-700">{session.user.name}</span>
+                    )}
+
+                    {/* Profile Dropdown */}
+                    <div className="relative" ref={profileDropdownRef}>
+                      <button
+                        onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                          {session.user.name?.charAt(0).toUpperCase() || 'U'}
+                        </div>
+                        <span className="font-medium text-gray-700 text-sm max-w-[120px] truncate">{session.user.name}</span>
+                        <ChevronDown className={cn(
+                          'w-4 h-4 text-gray-400 transition-transform duration-200',
+                          profileDropdownOpen && 'rotate-180'
+                        )} />
+                      </button>
+
+                      <AnimatePresence>
+                        {profileDropdownOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 overflow-hidden"
+                          >
+                            {/* User info header */}
+                            <div className="px-4 py-3 border-b border-gray-100">
+                              <p className="font-semibold text-gray-900 text-sm truncate">{session.user.name}</p>
+                              <p className="text-xs text-gray-500 truncate">{session.user.email}</p>
+                            </div>
+
+                            {/* Menu items */}
+                            <div className="py-1">
+                              <button
+                                onClick={() => { setProfileDropdownOpen(false); window.location.href = '/profile' }}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                              >
+                                <Settings className="w-4 h-4" />
+                                Profile
+                              </button>
+                              <button
+                                onClick={() => { setProfileDropdownOpen(false); window.location.href = '/my-registrations' }}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                              >
+                                <ClipboardList className="w-4 h-4" />
+                                My Registrations
+                              </button>
+                            </div>
+
+                            {/* Logout */}
+                            <div className="border-t border-gray-100 pt-1">
+                              <button
+                                onClick={() => { setProfileDropdownOpen(false); signOut({ redirect: false }).then(() => { window.location.href = '/' }) }}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                              >
+                                <LogOut className="w-4 h-4" />
+                                Logout
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => { signOut({ redirect: false }).then(() => { window.location.href = '/' }) }}
-                      className="text-gray-500 hover:text-red-500"
-                    >
-                      <LogOut className="w-4 h-4 mr-1" />
-                      Logout
-                    </Button>
-                  </div>
+                  </>
                 ) : (
                   <Button
                     onClick={() => { setAuthModalTab('login'); setAuthModalOpen(true) }}
@@ -168,7 +238,12 @@ export default function Header() {
               {/* Mobile - Cart + Menu */}
               <div className="flex items-center gap-2 md:hidden">
                 {mounted && session?.user && (
-                  <span className="text-xs font-medium text-gray-600 max-w-[80px] truncate">{session.user.name}</span>
+                  <button
+                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                    className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-sm font-bold shadow-sm"
+                  >
+                    {session.user.name?.charAt(0).toUpperCase() || 'U'}
+                  </button>
                 )}
                 <Button
                   variant="ghost"
@@ -199,7 +274,7 @@ export default function Header() {
                           </div>
                           <div>
                             <h2 className="text-white font-bold text-lg">DAPA RUN</h2>
-                            <p className="text-white/70 text-[15px] sm:text-[20px] font-light tracking-[0.15em]">{siteSettings.siteNameSuffix}</p>
+                            <p className="text-white/70 text-[15px] font-light tracking-[0.15em]">{siteSettings.siteNameSuffix}</p>
                           </div>
                         </div>
                       </div>
@@ -224,22 +299,9 @@ export default function Header() {
                         ))}
                       </nav>
                       <div className="p-6 border-t space-y-3">
-                        <Button
-                          onClick={() => { handleNavClick('cart'); setMobileMenuOpen(false) }}
-                          variant="outline"
-                          className="w-full border-orange-500 text-orange-500 hover:bg-orange-50 font-semibold relative"
-                        >
-                          <ShoppingCart className="w-4 h-4 mr-2" />
-                          Cart
-                          {count > 0 && (
-                            <span className="ml-2 bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                              {count}
-                            </span>
-                          )}
-                        </Button>
                         {mounted && session?.user ? (
                           <div className="space-y-2">
-                            {(session.user as Record<string, unknown>)?.role === 'admin' || (session.user as Record<string, unknown>)?.role === 'staff' ? (
+                            {(userRole === 'admin' || userRole === 'staff') && (
                               <Button
                                 onClick={() => { window.location.href = '/admin/dashboard'; setMobileMenuOpen(false) }}
                                 className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold"
@@ -247,7 +309,8 @@ export default function Header() {
                                 <Shield className="w-4 h-4 mr-2" />
                                 Dashboard
                               </Button>
-                            ) : (session.user as Record<string, unknown>)?.role === 'developer' ? (
+                            )}
+                            {userRole === 'developer' && (
                               <Button
                                 onClick={() => { window.location.href = '/admin/dev-dashboard'; setMobileMenuOpen(false) }}
                                 className="w-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-semibold"
@@ -255,14 +318,30 @@ export default function Header() {
                                 <Shield className="w-4 h-4 mr-2" />
                                 Dev Panel
                               </Button>
-                            ) : null}
+                            )}
+                            <Button
+                              onClick={() => { setMobileMenuOpen(false); window.location.href = '/profile' }}
+                              variant="outline"
+                              className="w-full border-orange-500 text-orange-500 hover:bg-orange-50 font-semibold"
+                            >
+                              <Settings className="w-4 h-4 mr-2" />
+                              Profile
+                            </Button>
+                            <Button
+                              onClick={() => { setMobileMenuOpen(false); window.location.href = '/my-registrations' }}
+                              variant="outline"
+                              className="w-full border-orange-500 text-orange-500 hover:bg-orange-50 font-semibold"
+                            >
+                              <ClipboardList className="w-4 h-4 mr-2" />
+                              My Registrations
+                            </Button>
                             <Button
                               onClick={() => { signOut({ redirect: false }).then(() => { window.location.href = '/' }); setMobileMenuOpen(false) }}
                               variant="outline"
                               className="w-full font-semibold text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
                             >
                               <LogOut className="w-4 h-4 mr-2" />
-                              Logout ({session.user.name})
+                              Logout
                             </Button>
                           </div>
                         ) : (
@@ -291,6 +370,48 @@ export default function Header() {
           </div>
         </div>
 
+        {/* Mobile Profile Dropdown */}
+        <AnimatePresence>
+          {profileDropdownOpen && mounted && session?.user && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="md:hidden fixed top-16 right-2 z-[60] w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2"
+            >
+              <div className="px-4 py-3 border-b border-gray-100">
+                <p className="font-semibold text-gray-900 text-sm truncate">{session.user.name}</p>
+                <p className="text-xs text-gray-500 truncate">{session.user.email}</p>
+              </div>
+              <div className="py-1">
+                <button
+                  onClick={() => { setProfileDropdownOpen(false); window.location.href = '/profile' }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                >
+                  <Settings className="w-4 h-4" />
+                  Profile
+                </button>
+                <button
+                  onClick={() => { setProfileDropdownOpen(false); window.location.href = '/my-registrations' }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  My Registrations
+                </button>
+              </div>
+              <div className="border-t border-gray-100 pt-1">
+                <button
+                  onClick={() => { setProfileDropdownOpen(false); signOut({ redirect: false }).then(() => { window.location.href = '/' }) }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Navigation Bar (Desktop) */}
         <nav className="hidden md:block border-b border-gray-100 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -302,12 +423,21 @@ export default function Header() {
                     onClick={() => handleNavClick(item.page)}
                     className={cn(
                       'px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 relative',
+                      item.page === 'cart'
+                        ? 'flex items-center gap-1'
+                        : '',
                       currentPage === item.page
                         ? 'text-orange-600 font-semibold'
                         : 'text-gray-600 hover:text-orange-500 hover:bg-orange-50'
                     )}
                   >
+                    {item.page === 'cart' && <ShoppingCart className="w-4 h-4" />}
                     {item.label}
+                    {item.page === 'cart' && count > 0 && (
+                      <span className="ml-1 bg-orange-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                        {count}
+                      </span>
+                    )}
                     {currentPage === item.page && (
                       <motion.div
                         layoutId="activeNav"
@@ -318,22 +448,6 @@ export default function Header() {
                   </button>
                 ))}
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleNavClick('cart')}
-                className="relative text-gray-600 hover:text-orange-500"
-              >
-                <ShoppingCart className="w-5 h-5 mr-1" />
-                <span className="text-sm">
-                  {count > 0 ? `${count} item${count > 1 ? 's' : ''}` : 'Cart'}
-                </span>
-                {count > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
-                    {count}
-                  </span>
-                )}
-              </Button>
             </div>
           </div>
         </nav>

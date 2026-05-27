@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { CheckCircle, ArrowRight, Loader2, ShoppingBag, Download, Receipt } from 'lucide-react'
+import { CheckCircle, ArrowRight, Loader2, ShoppingBag, Download, Receipt, ClipboardList } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 function PaymentSuccessContent() {
@@ -143,9 +143,19 @@ function PaymentSuccessContent() {
             )}
 
             <div className="space-y-3">
+              {!isMerch && (
+                <Button
+                  onClick={() => window.location.href = '/my-registrations'}
+                  className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold shadow-lg"
+                >
+                  <ClipboardList className="w-4 h-4 mr-2" />
+                  View My Registrations
+                </Button>
+              )}
               <Button
                 onClick={() => window.location.href = '/'}
-                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold shadow-lg"
+                variant={isMerch ? 'default' : 'outline'}
+                className={isMerch ? 'w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold shadow-lg' : 'w-full font-semibold'}
               >
                 Return to Home
                 <ArrowRight className="w-4 h-4 ml-2" />
