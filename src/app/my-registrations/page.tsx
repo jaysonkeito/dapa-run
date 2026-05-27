@@ -57,8 +57,25 @@ export default function MyRegistrationsPage() {
     fetchRegistrations()
   }, [])
 
-  const handleDownloadReceipt = (registrationId: string) => {
-    window.open(`/receipt?id=${registrationId}`, '_blank')
+  const handleDownloadReceipt = async (registrationId: string) => {
+    try {
+      const res = await fetch(`/api/receipt?id=${registrationId}`)
+      if (!res.ok) {
+        alert('Unable to download receipt. Please make sure payment is confirmed.')
+        return
+      }
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `DAPA-RUN-Receipt-${registrationId.substring(0, 8).toUpperCase()}.jpg`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch {
+      alert('Failed to download receipt. Please try again.')
+    }
   }
 
   const formatDate = (dateStr: string) => {

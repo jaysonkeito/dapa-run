@@ -309,9 +309,23 @@ export default function AdminRegistrationsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => window.open(`/receipt?id=${reg.id}`, '_blank')}
+                          onClick={async () => {
+                            try {
+                              const res = await fetch(`/api/receipt?id=${reg.id}`)
+                              if (!res.ok) return
+                              const blob = await res.blob()
+                              const url = window.URL.createObjectURL(blob)
+                              const link = document.createElement('a')
+                              link.href = url
+                              link.download = `DAPA-RUN-Receipt-${reg.id.substring(0, 8).toUpperCase()}.jpg`
+                              document.body.appendChild(link)
+                              link.click()
+                              document.body.removeChild(link)
+                              window.URL.revokeObjectURL(url)
+                            } catch { /* ignore */ }
+                          }}
                           className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                          title="View / Download Receipt"
+                          title="Download Receipt JPG"
                         >
                           <FileText className="w-4 h-4 mr-1" />
                           Receipt

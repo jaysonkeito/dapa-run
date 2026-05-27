@@ -88,9 +88,26 @@ function PaymentSuccessContent() {
 
   const isMerch = type === 'merch'
 
-  const handleDownloadReceipt = () => {
+  const handleDownloadReceipt = async () => {
     if (!ref) return
-    window.open(`/receipt?id=${ref}`, '_blank')
+    try {
+      const res = await fetch(`/api/receipt?id=${ref}`)
+      if (!res.ok) {
+        alert('Unable to download receipt. Please make sure payment is confirmed.')
+        return
+      }
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `DAPA-RUN-Receipt-${ref.substring(0, 8).toUpperCase()}.jpg`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch {
+      alert('Failed to download receipt. Please try again.')
+    }
   }
 
   return (
