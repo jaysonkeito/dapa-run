@@ -100,7 +100,10 @@ function PaymentSuccessContent() {
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `DAPA-RUN-Receipt-${ref.substring(0, 8).toUpperCase()}.jpg`
+      // Get filename from Content-Disposition header or use default
+      const disposition = res.headers.get('Content-Disposition')
+      const filenameMatch = disposition?.match(/filename="?(.+?)"?$/)
+      link.download = filenameMatch ? filenameMatch[1] : `DAPA-RUN-Receipt.jpg`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)

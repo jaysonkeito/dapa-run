@@ -43,6 +43,7 @@ function getPaymentMethodLabel(method: string | null): string {
 // Build a full SVG receipt image
 function buildReceiptSVG(data: {
   registrationId: string
+  referenceNumber: string | null
   participantName: string
   participantEmail: string
   eventName: string
@@ -69,8 +70,10 @@ function buildReceiptSVG(data: {
     ? formatDate(new Date(data.paidAt))
     : "Pending"
 
-  // Short ref ID for display
-  const shortRef = escapeXml(data.registrationId.substring(0, 8).toUpperCase())
+  // Short ref ID for display - use custom referenceNumber if available
+  const shortRef = data.referenceNumber 
+    ? escapeXml(data.referenceNumber) 
+    : escapeXml(data.registrationId.substring(0, 8).toUpperCase())
 
   // Payment method
   const payMethod = escapeXml(getPaymentMethodLabel(data.paymentMethod))
@@ -233,15 +236,23 @@ export async function GET(req: NextRequest) {
       eventDateStr = d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
     } catch { /* use raw */ }
 
+    // Debug log the receipt data
+    console.log("[Receipt] Generating receipt for registration:", registrationId)
+    console.log("[Receipt] Participant:", registration.user.name)
+    console.log("[Receipt] Event:", registration.event.title)
+    console.log("[Receipt] Amount:", registration.totalAmount)
+    console.log("[Receipt] Payment Status:", registration.paymentStatus)
+
     // Build SVG receipt
     const svg = buildReceiptSVG({
       registrationId: registration.id,
-      participantName: registration.user.name,
-      participantEmail: registration.user.email,
-      eventName: registration.event.title,
+      referenceNumber: registration.referenceNumber,
+      participantName: registration.user.name || "N/A",
+      participantEmail: registration.user.email || "N/A",
+      eventName: registration.event.title || "N/A",
       eventDate: eventDateStr,
-      eventLocation: registration.event.location,
-      distance: registration.distance,
+      eventLocation: registration.event.location || "N/A",
+      distance: registration.distance || "N/A",
       finisherShirtSize: registration.finisherShirtSize,
       singletSize: registration.singletSize,
       totalAmount: registration.totalAmount,
@@ -251,13 +262,16 @@ export async function GET(req: NextRequest) {
       siteNameSuffix,
     })
 
+    console.log("[Receipt] SVG length:", svg.length, "bytes")
+
     // Convert SVG to JPG using sharp
     const jpgBuffer = await sharp(Buffer.from(svg))
       .jpeg({ quality: 95 })
       .toBuffer()
 
     // Return JPG with download headers
-    const filename = `DAPA-RUN-Receipt-${registrationId.substring(0, 8).toUpperCase()}.jpg`
+    const displayRef = registration.referenceNumber || registrationId.substring(0, 8).toUpperCase()
+    const filename = `DAPA-RUN-Receipt-${displayRef}.jpg`
 
     return new NextResponse(jpgBuffer, {
       status: 200,

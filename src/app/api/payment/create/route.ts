@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { generateReferenceNumber } from "@/lib/utils"
 
 const PAYMONGO_SECRET_KEY = process.env.PAYMONGO_SECRET_KEY || ""
 const SITE_URL = process.env.NEXTAUTH_URL || "https://dapa-run.space-z.ai"
@@ -98,6 +99,9 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Generate custom reference number
+    const referenceNumber = generateReferenceNumber()
+
     // Create registration with pending payment
     const registration = await db.registration.create({
       data: {
@@ -109,6 +113,7 @@ export async function POST(req: NextRequest) {
         totalAmount: computedTotal,
         paymentStatus: "pending",
         paymentMethod,
+        referenceNumber,
       },
     })
 

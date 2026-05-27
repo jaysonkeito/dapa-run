@@ -86,6 +86,7 @@ model Registration {
   paymentStatus   String  @default("pending")  // "pending", "paid", "failed", "refunded"
   paymentMethod   String?   // "gcash", "maya", "grabpay", "cash"
   paymentReference String?  // PayMongo source ID or reference
+  referenceNumber String?  // Custom reference: MMDDYYYYHHMMRRR
   paidAt          DateTime?
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)

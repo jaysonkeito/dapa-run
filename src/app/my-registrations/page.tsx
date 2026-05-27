@@ -13,6 +13,7 @@ import {
   CreditCard,
   Package,
   AlertCircle,
+  Hash,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 
@@ -26,6 +27,7 @@ interface Registration {
   paymentStatus: string
   paymentMethod: string | null
   paymentReference: string | null
+  referenceNumber: string | null
   paidAt: string | null
   createdAt: string
   event: {
@@ -57,9 +59,9 @@ export default function MyRegistrationsPage() {
     fetchRegistrations()
   }, [])
 
-  const handleDownloadReceipt = async (registrationId: string) => {
+  const handleDownloadReceipt = async (reg: Registration) => {
     try {
-      const res = await fetch(`/api/receipt?id=${registrationId}`)
+      const res = await fetch(`/api/receipt?id=${reg.id}`)
       if (!res.ok) {
         alert('Unable to download receipt. Please make sure payment is confirmed.')
         return
@@ -68,7 +70,8 @@ export default function MyRegistrationsPage() {
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `DAPA-RUN-Receipt-${registrationId.substring(0, 8).toUpperCase()}.jpg`
+      const displayRef = reg.referenceNumber || reg.id.substring(0, 8).toUpperCase()
+      link.download = `DAPA-RUN-Receipt-${displayRef}.jpg`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -179,6 +182,14 @@ export default function MyRegistrationsPage() {
                       <div className="space-y-2">
                         <h3 className="font-bold text-gray-900 text-lg">{reg.event.title}</h3>
 
+                        {/* Reference Number */}
+                        {reg.referenceNumber && (
+                          <div className="flex items-center gap-1.5 text-sm">
+                            <Hash className="w-3.5 h-3.5 text-orange-500" />
+                            <span className="font-mono font-semibold text-orange-600">{reg.referenceNumber}</span>
+                          </div>
+                        )}
+
                         <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500">
                           <span className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
@@ -232,7 +243,7 @@ export default function MyRegistrationsPage() {
 
                       {reg.paymentStatus === 'paid' && (
                         <Button
-                          onClick={() => handleDownloadReceipt(reg.id)}
+                          onClick={() => handleDownloadReceipt(reg)}
                           size="sm"
                           className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold shadow-md"
                         >

@@ -120,6 +120,7 @@ export async function GET() {
       paymentStatus: reg.paymentStatus,
       paymentMethod: reg.paymentMethod,
       paymentReference: reg.paymentReference,
+      referenceNumber: reg.referenceNumber,
       paidAt: reg.paidAt?.toISOString() || null,
       createdAt: reg.createdAt.toISOString(),
       event: {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { generateReferenceNumber } from "@/lib/utils"
 
 export async function POST(req: NextRequest) {
   try {
@@ -78,6 +79,7 @@ export async function POST(req: NextRequest) {
         totalAmount: validatedTotalAmount,
         paymentMethod: resolvedPaymentMethod,
         paymentStatus,
+        referenceNumber: generateReferenceNumber(),
       },
     })
 
