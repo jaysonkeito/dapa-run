@@ -115,11 +115,17 @@ export async function POST(req: NextRequest) {
     const signatureHeader = req.headers.get("paymongo-signature") || ""
     const timestampHeader = req.headers.get("paymongo-timestamp") || ""
 
+    console.log(`[Webhook] Received request, signature present: ${!!signatureHeader}, timestamp present: ${!!timestampHeader}`)
+    console.log(`[Webhook] Webhook secret configured: ${PAYMONGO_WEBHOOK_SECRET ? 'yes' : 'no'} (length: ${PAYMONGO_WEBHOOK_SECRET.length})`)
+
     if (signatureHeader && timestampHeader && PAYMONGO_WEBHOOK_SECRET !== "whsk_your_secret_here") {
       if (!verifyWebhookSignature(rawBody, signatureHeader, timestampHeader)) {
         console.error("Webhook signature verification failed")
         return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
       }
+      console.log(`[Webhook] Signature verification passed`)
+    } else if (!signatureHeader || !timestampHeader) {
+      console.warn(`[Webhook] Missing signature/timestamp headers - skipping verification`)
     }
 
     // PayMongo webhook event types we handle:
@@ -127,6 +133,8 @@ export async function POST(req: NextRequest) {
     // Payment events: payment.paid, payment.failed
     const eventType = body?.data?.attributes?.type
     const eventData = body?.data?.attributes?.data
+
+    console.log(`[Webhook] Event type: ${eventType}`)
 
     if (!eventType) {
       return NextResponse.json({ error: "Invalid webhook payload" }, { status: 400 })

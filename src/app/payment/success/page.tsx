@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { CheckCircle, ArrowRight, Loader2, ShoppingBag, Download, Receipt, ClipboardList } from 'lucide-react'
@@ -12,41 +12,79 @@ function PaymentSuccessContent() {
   const type = searchParams.get('type') || 'registration'
   const [checking, setChecking] = useState(true)
   const [paymentConfirmed, setPaymentConfirmed] = useState(false)
+  const [paymentFailed, setPaymentFailed] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
   const [orderInfo, setOrderInfo] = useState<{
     orderNumber?: string
     totalAmount?: number
     paymentMethod?: string
   }>({})
 
-  useEffect(() => {
-    async function checkPayment() {
-      if (!ref) {
-        setChecking(false)
-        return
-      }
-      try {
-        const res = await fetch(`/api/payment/status?ref=${ref}&type=${type}`)
-        if (res.ok) {
-          const data = await res.json()
-          if (data.paymentStatus === 'paid') {
-            setPaymentConfirmed(true)
-          }
-          if (type === 'merch') {
-            setOrderInfo({
-              orderNumber: data.orderNumber,
-              totalAmount: data.totalAmount,
-              paymentMethod: data.paymentMethod,
-            })
-          }
-        }
-      } catch {
-        // Webhook might be delayed, still show success UI
-      } finally {
-        setChecking(false)
-      }
+  const checkPayment = useCallback(async () => {
+    if (!ref) {
+      setChecking(false)
+      return
     }
-    checkPayment()
+    try {
+      const res = await fetch(`/api/payment/status?ref=${ref}&type=${type}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.paymentStatus === 'paid') {
+          setPaymentConfirmed(true)
+          setChecking(false)
+          return
+        }
+        if (data.paymentStatus === 'failed') {
+          setPaymentFailed(true)
+          setChecking(false)
+          return
+        }
+        if (type === 'merch') {
+          setOrderInfo({
+            orderNumber: data.orderNumber,
+            totalAmount: data.totalAmount,
+            paymentMethod: data.paymentMethod,
+          })
+        }
+      }
+    } catch {
+      // Continue retrying
+    }
+
+    // If still pending after check, retry up to 5 times with delays
+    // The status API now has PayMongo fallback verification built in
+    setRetryCount(prev => {
+      const next = prev + 1
+      if (next < 5) {
+        // Will trigger another check via useEffect
+        return next
+      }
+      // Max retries reached, stop checking
+      setChecking(false)
+      return next
+    })
   }, [ref, type])
+
+  useEffect(() => {
+    if (!ref) {
+      setChecking(false)
+      return
+    }
+
+    // Initial check immediately
+    checkPayment()
+  }, [ref]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Retry with delays
+  useEffect(() => {
+    if (retryCount > 0 && retryCount < 5 && checking) {
+      const delay = retryCount * 3000 // 3s, 6s, 9s, 12s
+      const timer = setTimeout(() => {
+        checkPayment()
+      }, delay)
+      return () => clearTimeout(timer)
+    }
+  }, [retryCount, checking, checkPayment])
 
   const isMerch = type === 'merch'
 
@@ -66,6 +104,7 @@ function PaymentSuccessContent() {
           <div className="py-8">
             <Loader2 className="w-12 h-12 text-orange-500 animate-spin mx-auto mb-4" />
             <p className="text-gray-600">Verifying payment...</p>
+            <p className="text-sm text-gray-400 mt-2">Checking with payment provider</p>
           </div>
         ) : (
           <>
@@ -74,46 +113,65 @@ function PaymentSuccessContent() {
               animate={{ scale: 1 }}
               transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
             >
-              <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-6" />
+              {paymentFailed ? (
+                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-100 flex items-center justify-center">
+                  <span className="text-4xl">✕</span>
+                </div>
+              ) : (
+                <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-6" />
+              )}
             </motion.div>
 
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              Payment Successful!
-            </h1>
-
-            {isMerch ? (
+            {paymentFailed ? (
               <>
-                <p className="text-gray-500 mb-2">
-                  Your order has been confirmed.
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                  Payment Failed
+                </h1>
+                <p className="text-gray-500 mb-4">
+                  Your payment could not be processed. Please try again.
                 </p>
-                {orderInfo.orderNumber && (
-                  <p className="text-sm font-medium text-gray-700 mb-1">
-                    Order: {orderInfo.orderNumber}
-                  </p>
-                )}
-                {orderInfo.totalAmount && (
-                  <p className="text-sm font-semibold text-orange-600 mb-2">
-                    Total: ₱{orderInfo.totalAmount.toLocaleString()}
-                  </p>
-                )}
               </>
             ) : (
               <>
-                <p className="text-gray-500 mb-2">
-                  Your registration has been confirmed.
-                </p>
-              </>
-            )}
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                  Payment Successful!
+                </h1>
 
-            {paymentConfirmed && (
-              <p className="text-sm text-green-600 font-medium mb-4">
-                Payment verified and confirmed
-              </p>
-            )}
-            {!paymentConfirmed && ref && (
-              <p className="text-sm text-amber-600 mb-4">
-                Payment is being processed. You will receive a confirmation shortly.
-              </p>
+                {isMerch ? (
+                  <>
+                    <p className="text-gray-500 mb-2">
+                      Your order has been confirmed.
+                    </p>
+                    {orderInfo.orderNumber && (
+                      <p className="text-sm font-medium text-gray-700 mb-1">
+                        Order: {orderInfo.orderNumber}
+                      </p>
+                    )}
+                    {orderInfo.totalAmount && (
+                      <p className="text-sm font-semibold text-orange-600 mb-2">
+                        Total: ₱{orderInfo.totalAmount.toLocaleString()}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="text-gray-500 mb-2">
+                      Your registration has been confirmed.
+                    </p>
+                  </>
+                )}
+
+                {paymentConfirmed && (
+                  <p className="text-sm text-green-600 font-medium mb-4">
+                    Payment verified and confirmed
+                  </p>
+                )}
+                {!paymentConfirmed && ref && (
+                  <p className="text-sm text-amber-600 mb-4">
+                    Payment is being processed. You will receive a confirmation shortly.
+                  </p>
+                )}
+              </>
             )}
 
             {ref && (
