@@ -4,6 +4,38 @@ import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import sharp from "sharp"
 
+const PAYMONGO_SECRET_KEY = process.env.PAYMONGO_SECRET_KEY || ""
+
+// Directly check PayMongo API for source/payment status
+async function checkPayMongoStatus(sourceId: string): Promise<{ paid: boolean; status: string } | null> {
+  try {
+    const sourceRes = await fetch(`https://api.paymongo.com/v1/sources/${sourceId}`, {
+      headers: {
+        Authorization: `Basic ${Buffer.from(PAYMONGO_SECRET_KEY).toString("base64")}`,
+      },
+    })
+
+    if (sourceRes.ok) {
+      const sourceData = await sourceRes.json()
+      const sourceStatus = sourceData?.data?.attributes?.status
+      console.log(`[Receipt PayMongo Fallback] Source ${sourceId} status: ${sourceStatus}`)
+
+      if (sourceStatus === "chargeable" || sourceStatus === "paid") {
+        return { paid: true, status: sourceStatus }
+      }
+
+      if (sourceStatus === "failed") {
+        return { paid: false, status: "failed" }
+      }
+    }
+
+    return null
+  } catch (error) {
+    console.error("[Receipt PayMongo Fallback] Error checking status:", error)
+    return null
+  }
+}
+
 // Escape XML special characters for SVG
 function escapeXml(str: string): string {
   return str
@@ -220,9 +252,32 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 })
     }
 
-    // Only allow receipt for paid registrations
+    // Check if payment is confirmed - with PayMongo fallback
     if (registration.paymentStatus !== "paid") {
-      return NextResponse.json({ error: "Payment not confirmed yet" }, { status: 400 })
+      // If payment is pending and has a PayMongo reference, check PayMongo directly
+      if (registration.paymentStatus === "pending" && registration.paymentReference && registration.paymentMethod !== "cash") {
+        const payMongoResult = await checkPayMongoStatus(registration.paymentReference)
+        if (payMongoResult?.paid) {
+          // Update the registration status in the database
+          await db.registration.update({
+            where: { id: registrationId },
+            data: { paymentStatus: "paid", paidAt: new Date() },
+          })
+          // Re-fetch registration with updated status
+          const updatedReg = await db.registration.findUnique({
+            where: { id: registrationId },
+            include: { event: true, user: true },
+          })
+          if (updatedReg) {
+            Object.assign(registration, updatedReg)
+          }
+          console.log(`[Receipt PayMongo Fallback] Updated registration ${registrationId} to paid`)
+        } else {
+          return NextResponse.json({ error: "Payment not confirmed yet. Please wait for payment verification." }, { status: 400 })
+        }
+      } else {
+        return NextResponse.json({ error: "Payment not confirmed yet" }, { status: 400 })
+      }
     }
 
     // Get site settings for suffix
